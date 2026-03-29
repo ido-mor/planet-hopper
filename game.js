@@ -33,7 +33,6 @@
   var targetPlanet = document.getElementById('targetPlanet');
   var groundPlanet = document.getElementById('groundPlanet');
   var mathProblemEl = document.getElementById('mathProblem');
-  var answerDisplayEl = document.getElementById('answerDisplay');
   var feedbackOverlay = document.getElementById('feedbackOverlay');
   var feedbackCheck = document.getElementById('feedbackCheck');
   var feedbackX = document.getElementById('feedbackX');
@@ -319,11 +318,16 @@
     });
   }
 
+  function renderProblemText() {
+    if (!state.currentProblem) return;
+    var displayValue = state.userInput || '?';
+    mathProblemEl.textContent = state.currentProblem.text.replace('?', displayValue);
+  }
+
   function showProblem() {
     state.currentProblem = generateProblem();
-    mathProblemEl.textContent = state.currentProblem.text;
     state.userInput = '';
-    answerDisplayEl.textContent = '?';
+    renderProblemText();
   }
 
   function showFeedback(correct) {
@@ -416,13 +420,13 @@
     if (state.phase !== 'playing') return;
     if (state.userInput.length >= 7) return;
     state.userInput += String(d);
-    answerDisplayEl.textContent = state.userInput || '?';
+    renderProblemText();
   }
 
   function deleteDigit() {
     if (state.phase !== 'playing') return;
     state.userInput = state.userInput.slice(0, -1);
-    answerDisplayEl.textContent = state.userInput || '?';
+    renderProblemText();
   }
 
   function playRocketSound() {
