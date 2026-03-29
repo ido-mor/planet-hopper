@@ -1,0 +1,1309 @@
+/* ---- Donkey Kong style: pixel art, limited palette ---- */
+@font-face {
+  font-family: 'Pixeboy';
+  src: url('fonts/Pixeboy-z8XGD.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Pixel-perfect scaling */
+html {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: "Press Start 2P", monospace;
+  font-size: 20px;
+  background: #1a1a2e;
+  color: #e8e8e8;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* ---- Game container: 20% map + 80% cockpit ---- */
+.game-container {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  padding:
+    max(6px, env(safe-area-inset-top))
+    max(6px, env(safe-area-inset-right))
+    max(6px, env(safe-area-inset-bottom))
+    max(6px, env(safe-area-inset-left));
+}
+
+/* ---- Left panel: path map (~1/5) ---- */
+.map-panel {
+  flex: 0 0 20%;
+  min-width: 120px;
+  background: #0f0f1a;
+  border-right: 4px solid #3d3d5c;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4px;
+}
+
+.path-diagram {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: visible;
+}
+
+/* Target planet - positioned so its bottom meets the ship nose on the last step (top: 8%) */
+.target-planet {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100%);
+  width: 80px;
+  height: 80px;
+  border: 4px solid #1a1a2e;
+  border-radius: 50%;
+  background: #e8c040;
+  image-rendering: pixelated;
+  z-index: 1;
+}
+
+.path-steps {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 180px;
+}
+
+.path-step {
+  width: 8px;
+  height: 8px;
+  background: #3d3d5c;
+  margin: 0 auto;
+  border: 2px solid #5c5c8a;
+}
+
+/* Ground = previous planet (color set by JS); level 1 = earth */
+.ground.previous-planet {
+  flex-shrink: 0;
+  height: 28px;
+  width: 100%;
+  border: 3px solid #1a1a2e;
+  border-radius: 4px;
+  background: #4a5a3a;
+  margin-top: 4px;
+}
+
+/* ---- Pixel spaceship 50% larger (red nose, white body, window, 3 fins, blue base) ---- */
+.ship-container {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48px;
+  height: 60px;
+  transition: top 0.5s ease-out;
+  z-index: 2;
+  top: calc(100% - 28px - 30px);
+  overflow: visible;
+}
+
+.pixel-ship {
+  width: 48px;
+  height: 60px;
+  position: relative;
+  image-rendering: pixelated;
+}
+
+/* Build ship from blocks: nose (red), body (white), window (blue), fins (red), base (blue) */
+.pixel-ship::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 0;
+  width: 24px;
+  height: 15px;
+  background: #c41e3a;
+  border: 2px solid #1a1a2e;
+}
+
+.pixel-ship::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 15px;
+  width: 30px;
+  height: 24px;
+  background: #f0f0f0;
+  border: 2px solid #1a1a2e;
+}
+
+.pixel-ship .ship-window {
+  position: absolute;
+  left: 16px;
+  top: 21px;
+  width: 15px;
+  height: 15px;
+  background: #4169e1;
+  border: 2px solid #1a1a2e;
+}
+
+.pixel-ship .ship-fins {
+  position: absolute;
+  left: 3px;
+  top: 36px;
+  width: 42px;
+  height: 12px;
+  background: #c41e3a;
+  border: 2px solid #1a1a2e;
+  clip-path: polygon(0 100%, 14% 0, 50% 40%, 86% 0, 100% 100%);
+}
+
+.pixel-ship .ship-base {
+  position: absolute;
+  left: 15px;
+  top: 48px;
+  width: 18px;
+  height: 12px;
+  background: #4169e1;
+  border: 2px solid #1a1a2e;
+}
+
+/* Engine flame: visible only when shuttle is thrusting upward, centered under ship base */
+.engine-flame {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 24px;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.12s ease-out, visibility 0s linear 0.12s;
+}
+
+.ship-container.thrusting .engine-flame {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 24'%3E%3Cpath fill='%23ff6600' d='M8 0 L14 24 L8 18 L2 24 Z'/%3E%3Cpath fill='%23ffaa00' d='M8 4 L12 24 L8 20 L4 24 Z'/%3E%3C/svg%3E") center top no-repeat;
+  background-size: 16px 24px;
+  animation: flameFlicker 0.08s ease-in-out infinite;
+}
+
+@keyframes flameFlicker {
+  0%, 100% {
+    transform: translateX(-50%) scaleY(1) scaleX(1);
+    opacity: 1;
+  }
+  33% {
+    transform: translateX(-50%) scaleY(1.1) scaleX(0.95);
+    opacity: 0.9;
+  }
+  66% {
+    transform: translateX(-50%) scaleY(0.95) scaleX(1.05);
+    opacity: 1;
+  }
+}
+
+/* Inline pixel ship (map): same design as blocks */
+.pixel-ship {
+  background: transparent;
+}
+
+.pixel-ship::before {
+  border-radius: 0;
+}
+
+.pixel-ship::after {
+  border-radius: 0;
+}
+
+/* Explosion - pixel style */
+.explosion {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48px;
+  height: 48px;
+  background: #ff6600;
+  border: 3px solid #1a1a2e;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.explosion.active {
+  animation: explode 1s ease-out forwards;
+}
+
+@keyframes explode {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.5);
+  }
+  30% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.8);
+  }
+}
+
+/* ---- Cockpit: pixel display console ---- */
+.cockpit {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  position: relative;
+}
+
+/* Header above calculator: lives left, level center, score right */
+.cockpit-header {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 10px;
+  margin-bottom: 0;
+}
+
+.cockpit-header .level-display {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  color: #a0a0c0;
+  margin: 0;
+}
+
+.cockpit-header .score-wrap {
+  font-size: 14px;
+  color: #e8e8e8;
+  margin: 0;
+  min-width: 8ch;
+  text-align: right;
+}
+
+.cockpit-header .score-label {
+  color: #a0a0c0;
+  margin-right: 4px;
+}
+
+.cockpit-frame {
+  width: 100%;
+  max-width: 560px;
+  min-height: 480px;
+  background: #2a2a3e;
+  border: 6px solid #3d3d5c;
+  box-shadow: inset 0 0 0 4px #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  padding: 22px;
+  position: relative;
+}
+
+/* Rivet/bolt effect along frame */
+.cockpit-frame::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid #5c5c8a;
+  pointer-events: none;
+}
+
+/* Lives: 3 small rocket icons (red nose, white body, window, fins, blue base) */
+.lives {
+  display: flex;
+  gap: 8px;
+}
+
+.life-rocket {
+  width: 24px;
+  height: 32px;
+  image-rendering: pixelated;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.life-rocket-full {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 32'%3E%3Crect fill='%23c41e3a' x='8' y='0' width='8' height='6'/%3E%3Crect fill='%23f0f0f0' x='6' y='6' width='12' height='12'/%3E%3Crect fill='%234169e1' x='10' y='10' width='4' height='4'/%3E%3Cpath fill='%23c41e3a' d='M2 20 L6 18 L12 22 L18 18 L22 20 L20 26 L4 26 Z'/%3E%3Crect fill='%234169e1' x='9' y='26' width='6' height='4'/%3E%3C/svg%3E");
+}
+
+.life-rocket-empty {
+  opacity: 0.6;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 32'%3E%3Cpath fill='none' stroke='%235c5c8a' stroke-width='1.5' d='M12 0 L20 6 L18 14 L20 22 L12 28 L4 22 L6 14 L4 6 Z'/%3E%3Cellipse cx='12' cy='11' fill='none' stroke='%235c5c8a' rx='4' ry='4'/%3E%3C/svg%3E");
+}
+
+/* Display area - main screen */
+.display-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  min-height: 100px;
+  background: #1a1a2e;
+  border: 4px solid #3d3d5c;
+  padding: 22px;
+  margin-bottom: 18px;
+}
+
+.math-problem {
+  font-size: 24px;
+  line-height: 1.6;
+  margin: 0;
+  color: #e8e8e8;
+  word-spacing: 0.2em;
+}
+
+.answer-display {
+  font-size: 24px;
+  min-height: 1.5em;
+  color: #a0a0c0;
+  margin: 0;
+}
+
+/* Keypad: 3 columns, then Submit full width */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: auto;
+}
+
+.keypad-btn {
+  min-height: 54px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 20px;
+  border: 3px solid #1a1a2e;
+  background: #3d3d5c;
+  color: #e8e8e8;
+  cursor: pointer;
+  transition: none;
+  image-rendering: pixelated;
+  touch-action: manipulation;
+}
+
+.keypad-btn:hover {
+  background: #5c5c8a;
+}
+
+.keypad-btn:active {
+  background: #2a2a4e;
+}
+
+.keypad-btn.num {
+  grid-column: span 1;
+}
+
+.keypad-btn.delete {
+  grid-column: span 1;
+  background: #5c4a3a;
+  font-size: 18px;
+}
+
+.keypad-btn.delete:hover {
+  background: #7c6a5a;
+}
+
+.keypad-btn.submit {
+  grid-column: span 1;
+  background: #2a4a3a;
+}
+
+.keypad-btn.submit.submit-full {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.keypad-btn.submit:hover {
+  background: #3a5a4a;
+}
+
+/* Feedback overlay (pixel check / X) */
+.feedback-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.feedback-check,
+.feedback-x {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  opacity: 0;
+  image-rendering: pixelated;
+}
+
+.feedback-check.show {
+  animation: feedbackInOut 1.2s ease-out forwards;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='none' stroke='%2300aa00' stroke-width='4' stroke-linecap='square' d='M4 16 L12 24 L28 8'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+
+.feedback-x.show {
+  animation: feedbackInOut 1.2s ease-out forwards;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='none' stroke='%23aa0000' stroke-width='4' stroke-linecap='square' d='M8 8 L24 24 M24 8 L8 24'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+
+@keyframes feedbackInOut {
+  0% { opacity: 0; transform: scale(0.5); }
+  20% { opacity: 1; transform: scale(1.1); }
+  70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+/* Game over overlay */
+.game-over-overlay,
+.win-overlay,
+.level-complete-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  z-index: 10;
+}
+
+.game-over-overlay.hidden,
+.win-overlay.hidden,
+.level-complete-overlay.hidden {
+  display: none;
+}
+
+.game-over-text {
+  font-size: 22px;
+  line-height: 1.8;
+  letter-spacing: 0.15em;
+  margin: 0;
+  color: #ff4444;
+  text-align: center;
+}
+
+.game-over-text.flash {
+  animation: flash 0.6s ease-in-out infinite;
+}
+
+@keyframes flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.win-text {
+  font-size: 20px;
+  color: #80ff80;
+  margin: 0;
+  text-align: center;
+}
+
+/* Level complete: full-width planet (top 1/5 visible), rocket + astronaut on surface */
+.level-complete-overlay {
+  padding: 22px;
+  gap: 18px;
+}
+
+.level-complete-text {
+  font-size: 18px;
+  line-height: 1.8;
+  color: #80ff80;
+  margin: 0;
+  text-align: center;
+  max-width: 100%;
+}
+
+.level-complete-scene {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 180px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* Planet: full width, show only top 1/5 (curved horizon) */
+.level-complete-planet-wrap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.level-complete-planet {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300%;
+  max-width: none;
+  height: 300%;
+  min-height: 600px;
+  bottom: -280%;
+  border: 4px solid #1a1a2e;
+  border-radius: 50%;
+  background: #e8c040;
+  image-rendering: pixelated;
+}
+
+.level-complete-surface {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 24px;
+  min-height: 100px;
+  padding-bottom: 8px;
+}
+
+/* Large rocket on planet surface (50% larger than map rocket) */
+.level-complete-rocket {
+  width: 72px;
+  height: 90px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.level-complete-rocket::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 0;
+  width: 36px;
+  height: 22px;
+  background: #c41e3a;
+  border: 2px solid #1a1a2e;
+}
+
+.level-complete-rocket::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 22px;
+  width: 44px;
+  height: 36px;
+  background: #f0f0f0;
+  border: 2px solid #1a1a2e;
+}
+
+.level-complete-rocket .lc-rocket-window {
+  position: absolute;
+  left: 24px;
+  top: 30px;
+  width: 22px;
+  height: 22px;
+  background: #4169e1;
+  border: 2px solid #1a1a2e;
+}
+
+.level-complete-rocket .lc-rocket-fins {
+  position: absolute;
+  left: 4px;
+  top: 54px;
+  width: 64px;
+  height: 18px;
+  background: #c41e3a;
+  border: 2px solid #1a1a2e;
+  clip-path: polygon(0 100%, 12% 0, 50% 45%, 88% 0, 100% 100%);
+}
+
+.level-complete-rocket .lc-rocket-base {
+  position: absolute;
+  left: 22px;
+  top: 72px;
+  width: 28px;
+  height: 18px;
+  background: #4169e1;
+  border: 2px solid #1a1a2e;
+}
+
+/* Donkey Kong pixel astronaut: white suit, helmet/visor, crossed arms, ~2/3 rocket height */
+.astronaut-dancing {
+  width: 48px;
+  height: 60px;
+  flex-shrink: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 40'%3E%3Cellipse cx='16' cy='10' rx='10' ry='10' fill='%23f0f0f0' stroke='%231a1a2e' stroke-width='2'/%3E%3Cellipse cx='16' cy='11' rx='7' ry='6' fill='%231a1a2e'/%3E%3Crect x='8' y='20' width='16' height='14' fill='%23f0f0f0' stroke='%231a1a2e' stroke-width='2'/%3E%3Crect x='4' y='22' width='10' height='4' fill='%23f0f0f0' stroke='%231a1a2e' stroke-width='1'/%3E%3Crect x='18' y='22' width='10' height='4' fill='%23f0f0f0' stroke='%231a1a2e' stroke-width='1'/%3E%3Cpath d='M10 34 L6 40 M22 34 L26 40' stroke='%231a1a2e' stroke-width='2' fill='none'/%3E%3C/svg%3E") center/contain no-repeat;
+  image-rendering: pixelated;
+  animation: danceAnim 0.35s ease-in-out infinite;
+}
+
+@keyframes danceAnim {
+  0%, 100% {
+    transform: translateY(0) rotate(-8deg) scaleX(1);
+  }
+  25% {
+    transform: translateY(-4px) rotate(0deg) scaleX(1.05);
+  }
+  50% {
+    transform: translateY(-6px) rotate(8deg) scaleX(0.95);
+  }
+  75% {
+    transform: translateY(-3px) rotate(0deg) scaleX(1.02);
+  }
+}
+
+.continue-btn,
+.play-again-btn {
+  padding: 16px 28px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 20px;
+  border: 3px solid #1a1a2e;
+  background: #2a5a4a;
+  color: #e8ffe8;
+  cursor: pointer;
+}
+
+.continue-btn:hover,
+.play-again-btn:hover {
+  background: #3a6a5a;
+}
+
+.continue-btn:active,
+.play-again-btn:active {
+  background: #1a4a3a;
+}
+
+/* ---- Intro: pixel rocket ---- */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  background: #0f0f1a;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  padding:
+    env(safe-area-inset-top)
+    env(safe-area-inset-right)
+    env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+.intro-overlay.hidden {
+  display: none;
+}
+
+.game-title {
+  position: absolute;
+  top: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  font-family: 'Pixeboy', monospace;
+  font-size: clamp(48px, 12vw, 96px);
+  color: #000;
+  margin: 0;
+  text-align: center;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  /* Outline via text-shadow, color cycles */
+  text-shadow:
+    3px 0 0 #0ff,
+    -3px 0 0 #0ff,
+    0 3px 0 #0ff,
+    0 -3px 0 #0ff,
+    2px 2px 0 #0ff,
+    -2px -2px 0 #0ff,
+    2px -2px 0 #0ff,
+    -2px 2px 0 #0ff,
+    0 0 8px #0ff;
+  animation: titleOutline 3s ease-in-out infinite;
+}
+
+@keyframes titleOutline {
+  0%, 100% {
+    text-shadow:
+      3px 0 0 #0ff, -3px 0 0 #0ff, 0 3px 0 #0ff, 0 -3px 0 #0ff,
+      2px 2px 0 #0ff, -2px -2px 0 #0ff, 2px -2px 0 #0ff, -2px 2px 0 #0ff,
+      0 0 8px #0ff;
+  }
+  25% {
+    text-shadow:
+      3px 0 0 #f0f, -3px 0 0 #f0f, 0 3px 0 #f0f, 0 -3px 0 #f0f,
+      2px 2px 0 #f0f, -2px -2px 0 #f0f, 2px -2px 0 #f0f, -2px 2px 0 #f0f,
+      0 0 8px #f0f;
+  }
+  50% {
+    text-shadow:
+      3px 0 0 #ff0, -3px 0 0 #ff0, 0 3px 0 #ff0, 0 -3px 0 #ff0,
+      2px 2px 0 #ff0, -2px -2px 0 #ff0, 2px -2px 0 #ff0, -2px 2px 0 #ff0,
+      0 0 8px #ff0;
+  }
+  75% {
+    text-shadow:
+      3px 0 0 #0f8, -3px 0 0 #0f8, 0 3px 0 #0f8, 0 -3px 0 #0f8,
+      2px 2px 0 #0f8, -2px -2px 0 #0f8, 2px -2px 0 #0f8, -2px 2px 0 #0f8,
+      0 0 8px #0f8;
+  }
+}
+
+.click-to-start {
+  position: absolute;
+  top: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  color: #8f8;
+  margin: 0;
+  padding: 12px 20px;
+  text-align: center;
+  animation: clickPulse 1.5s ease-in-out infinite;
+}
+
+.click-to-start.hidden {
+  display: none;
+}
+
+@keyframes clickPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Intro scene: fixed size, sits just above full-width ground */
+.intro-scene {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  width: 200px;
+  height: 260px;
+}
+
+/* Full-width ground layer at bottom of overlay - rocket sits on this */
+.intro-ground {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 28px;
+  z-index: 0;
+  background: #4a5a3a;
+  border-top: 4px solid #3d4a2e;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.08);
+}
+
+/* Rocket: same size as blast-off (120x200), base on ground */
+.spaceship-intro {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 200px;
+}
+
+/* Pixel rocket intro: match blast-off dimensions and style */
+.ship-pixel-intro {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 200px;
+}
+
+.pixel-nose {
+  position: absolute;
+  left: 35px;
+  top: 0;
+  width: 50px;
+  height: 40px;
+  background: #c41e3a;
+  border: 3px solid #0f0f1a;
+}
+
+.pixel-nose-tip {
+  position: absolute;
+  left: 42px;
+  top: -5px;
+  width: 36px;
+  height: 12px;
+  background: #8b0000;
+  border: 3px solid #0f0f1a;
+}
+
+.pixel-body-intro {
+  position: absolute;
+  left: 25px;
+  top: 40px;
+  width: 70px;
+  height: 90px;
+  background: #f0f0f0;
+  border: 3px solid #0f0f1a;
+}
+
+.pixel-window {
+  position: absolute;
+  left: 40px;
+  top: 50px;
+  width: 30px;
+  height: 30px;
+  background: #4169e1;
+  border: 3px solid #0f0f1a;
+}
+
+.pixel-body-stripe {
+  position: absolute;
+  left: 25px;
+  top: 98px;
+  width: 70px;
+  height: 12px;
+  background: #c41e3a;
+  border-left: 3px solid #0f0f1a;
+  border-right: 3px solid #0f0f1a;
+}
+
+.pixel-fins-intro {
+  position: absolute;
+  left: 10px;
+  top: 127px;
+  width: 100px;
+  height: 35px;
+  background: #c41e3a;
+  border: 3px solid #0f0f1a;
+  clip-path: polygon(0 100%, 15% 0, 50% 40%, 85% 0, 100% 100%);
+}
+
+.pixel-base-intro {
+  position: absolute;
+  left: 40px;
+  top: 160px;
+  width: 40px;
+  height: 28px;
+  background: #4169e1;
+  border: 3px solid #0f0f1a;
+}
+
+.door-left,
+.door-right {
+  position: absolute;
+  bottom: 38px;
+  width: 18px;
+  height: 52px;
+  background: #3d3d5c;
+  border: 3px solid #0f0f1a;
+  transition: transform 0.5s ease;
+}
+
+.door-left {
+  left: 50%;
+  transform: translateX(-100%);
+}
+
+.door-right {
+  left: 50%;
+}
+
+.door-left.open {
+  transform: translateX(-100%) translateX(-24px);
+}
+
+.door-right.open {
+  transform: translateX(24px);
+}
+
+.ladder-intro {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 100px;
+  background: repeating-linear-gradient(
+    180deg,
+    #3d3d5c 0px,
+    #3d3d5c 8px,
+    #0f0f1a 8px,
+    #0f0f1a 16px
+  );
+  border: 3px solid #5c5c8a;
+}
+
+/* Astronaut: proportionate to rocket (~1/5 height), on ground */
+.astronaut {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 24px;
+  height: 40px;
+  transform: translateX(-50%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 40'%3E%3Cellipse cx='12' cy='7' rx='6' ry='6' fill='%235c7a99'/%3E%3Cellipse cx='12' cy='7' rx='4' ry='4' fill='%231a2a3a'/%3E%3Crect x='7' y='13' width='10' height='14' fill='%23aaccff'/%3E%3Crect x='8' y='15' width='2' height='4' fill='%234169e1'/%3E%3Cpath d='M5 14 L0 28 M19 14 L24 28' stroke='%23444' stroke-width='2' fill='none'/%3E%3Cpath d='M10 26 L7 38 M14 26 L17 38' stroke='%23444' stroke-width='2' fill='none'/%3E%3C/svg%3E") center/contain no-repeat;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  transition: none;
+}
+
+.astronaut.climb {
+  animation: climbLadder 3s ease-in-out forwards;
+}
+
+@keyframes climbLadder {
+  0% { bottom: 0; left: 50%; }
+  70% { bottom: 100px; left: 50%; }
+  85% { bottom: 104px; left: 50%; opacity: 1; }
+  100% { bottom: 104px; left: 50%; opacity: 0; }
+}
+
+/* Blast-off: rocket on full-width ground, flies up behind title */
+.blast-off-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.blast-off-scene .blast-off-rocket {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.blast-off-scene.blast-off-active .blast-off-rocket {
+  animation: rocketBlastOff 3.5s ease-in forwards;
+}
+
+.blast-off-scene.hidden {
+  display: none;
+}
+
+.blast-off-scene.blast-off-active .intro-engine-flame {
+  animation: flameFlicker 0.08s ease-in-out infinite;
+}
+
+.blast-off-rocket {
+  position: relative;
+  width: 120px;
+  height: 200px;
+  flex-shrink: 0;
+}
+
+.blast-nose {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 40px;
+  background: #c41e3a;
+  border: 3px solid #0f0f1a;
+}
+
+.blast-body {
+  position: absolute;
+  left: 50%;
+  top: 40px;
+  transform: translateX(-50%);
+  width: 70px;
+  height: 90px;
+  background: #f0f0f0;
+  border: 3px solid #0f0f1a;
+}
+
+.blast-window {
+  position: absolute;
+  left: 50%;
+  top: 20px;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 30px;
+  background: #4169e1;
+  border: 3px solid #0f0f1a;
+}
+
+.blast-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: 70px;
+  height: 12px;
+  background: #c41e3a;
+  border-left: 3px solid #0f0f1a;
+  border-right: 3px solid #0f0f1a;
+}
+
+.blast-fins {
+  position: absolute;
+  left: 50%;
+  top: 125px;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 35px;
+  background: #c41e3a;
+  border: 3px solid #0f0f1a;
+  clip-path: polygon(0 100%, 15% 0, 50% 40%, 85% 0, 100% 100%);
+}
+
+.blast-base {
+  position: absolute;
+  left: 50%;
+  top: 158px;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 28px;
+  background: #4169e1;
+  border: 3px solid #0f0f1a;
+}
+
+.intro-engine-flame {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 80px;
+  background: linear-gradient(180deg, #ff6600 0%, #ff3300 30%, #cc0000 70%, transparent 100%);
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  filter: blur(2px);
+  image-rendering: pixelated;
+}
+
+@keyframes rocketBlastOff {
+  0% { transform: translateX(-50%) translateY(0); }
+  100% { transform: translateX(-50%) translateY(-120vh); }
+}
+
+@keyframes flameFlicker {
+  0%, 100% { opacity: 1; transform: translateX(-50%) scaleY(1); }
+  50% { opacity: 0.85; transform: translateX(-50%) scaleY(1.15); }
+}
+
+.countdown-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  z-index: 21;
+}
+
+.countdown-overlay.hidden {
+  display: none;
+}
+
+.countdown-number {
+  display: inline-block;
+  font-size: 74px;
+  color: #f0f0f0;
+  text-shadow: 4px 4px 0 #1a1a2e;
+  padding: 0.1em 0.25em;
+  border: 6px solid #c41e3a;
+  background: rgba(0, 0, 0, 0.4);
+  animation: countdownPop 1s ease-out;
+}
+
+.countdown-number.countdown-go {
+  font-size: 74px;
+  letter-spacing: 0.05em;
+}
+
+.rotate-device-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #0f0f1a;
+  color: #e8e8e8;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.rotate-device-overlay p {
+  margin: 0;
+  font-size: 16px;
+}
+
+/* iPhone landscape and other small-height screens */
+@media (orientation: landscape) and (max-height: 500px) {
+  .map-panel {
+    flex-basis: 18%;
+    min-width: 92px;
+    border-right-width: 3px;
+    padding: 2px;
+  }
+
+  .target-planet {
+    width: 58px;
+    height: 58px;
+    border-width: 3px;
+  }
+
+  .path-step {
+    width: 6px;
+    height: 6px;
+    border-width: 1px;
+  }
+
+  .ground.previous-planet {
+    height: 22px;
+    border-width: 2px;
+  }
+
+  .ship-container {
+    transform: translateX(-50%) scale(0.82);
+    transform-origin: center bottom;
+  }
+
+  .cockpit {
+    padding: 4px;
+    justify-content: flex-start;
+  }
+
+  .cockpit-header {
+    max-width: 100%;
+    padding: 2px 4px 8px;
+  }
+
+  .cockpit-header .level-display,
+  .cockpit-header .score-wrap {
+    font-size: 11px;
+  }
+
+  .lives {
+    gap: 5px;
+  }
+
+  .life-rocket {
+    width: 18px;
+    height: 24px;
+  }
+
+  .cockpit-frame {
+    max-width: 100%;
+    min-height: 0;
+    height: 100%;
+    border-width: 4px;
+    box-shadow: inset 0 0 0 2px #1a1a2e;
+    padding: 10px;
+  }
+
+  .display-area {
+    gap: 10px;
+    margin-bottom: 10px;
+    border-width: 3px;
+    padding: 10px;
+  }
+
+  .math-problem {
+    font-size: clamp(12px, 2.8vw, 18px);
+    line-height: 1.45;
+    text-align: center;
+    word-spacing: 0.08em;
+  }
+
+  .answer-display {
+    font-size: clamp(14px, 3.2vw, 20px);
+  }
+
+  .keypad {
+    gap: 7px;
+  }
+
+  .keypad-btn {
+    min-height: 42px;
+    font-size: 18px;
+    border-width: 2px;
+  }
+
+  .keypad-btn.delete {
+    font-size: 14px;
+  }
+
+  .continue-btn,
+  .play-again-btn {
+    font-size: 14px;
+    padding: 10px 14px;
+  }
+
+  .game-over-text {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .level-complete-text,
+  .win-text {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .countdown-number,
+  .countdown-number.countdown-go {
+    font-size: 52px;
+    border-width: 4px;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 900px) {
+  .rotate-device-overlay {
+    display: flex;
+  }
+
+  .game-container,
+  .intro-overlay {
+    display: none !important;
+  }
+}
+
+@keyframes countdownPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.hidden {
+  display: none !important;
+}

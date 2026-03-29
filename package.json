@@ -1,0 +1,7 @@
+{
+  "name": "math-rocket-game",
+  "private": true,
+  "scripts": {
+    "iphone": "./start-iphone.sh"
+  }
+}

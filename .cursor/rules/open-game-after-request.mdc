@@ -1,0 +1,22 @@
+---
+description: Open the game in a browser tab after each completed request
+alwaysApply: true
+---
+
+# Open game after request
+
+When you have **fully finished** handling the user's request (all edits done, no follow-up work left), open the Math rocket game in the default browser so they can try it.
+
+Run this command once at the end of your response:
+
+```bash
+open "index.html"
+```
+
+Run it from the project root: `/Users/imor/Documents/Cursor Projects/Math rocket game/`. Prefer the full path if needed:
+
+```bash
+open "/Users/imor/Documents/Cursor Projects/Math rocket game/index.html"
+```
+
+Do not run it in the middle of a multi-step task—only after the request is complete.

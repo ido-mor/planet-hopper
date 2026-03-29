@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-title" content="Planet Hopper">
+  <title>Astronaut Math Rocket</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="assets/icons/icon-192.svg">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="rotate-device-overlay" id="rotateDeviceOverlay" aria-hidden="true">
+    <p>Rotate your iPhone to landscape to play.</p>
+  </div>
+  <div class="game-container">
+    <!-- Left panel: path map (~20%) -->
+    <aside class="map-panel">
+      <div class="path-diagram">
+        <div class="planet target-planet" id="targetPlanet" aria-hidden="true"></div>
+        <div class="path-steps">
+          <div class="path-step" data-step="9"></div>
+          <div class="path-step" data-step="8"></div>
+          <div class="path-step" data-step="7"></div>
+          <div class="path-step" data-step="6"></div>
+          <div class="path-step" data-step="5"></div>
+          <div class="path-step" data-step="4"></div>
+          <div class="path-step" data-step="3"></div>
+          <div class="path-step" data-step="2"></div>
+          <div class="path-step" data-step="1"></div>
+          <div class="path-step" data-step="0"></div>
+        </div>
+        <div class="ground previous-planet" id="groundPlanet"></div>
+        <div class="ship-container" id="shipContainer" aria-hidden="true">
+          <div class="ship pixel-ship" id="ship">
+            <span class="ship-window"></span>
+            <span class="ship-fins"></span>
+            <span class="ship-base"></span>
+          </div>
+          <div class="engine-flame" id="engineFlame" aria-hidden="true"></div>
+        </div>
+        <div class="explosion" id="explosion" aria-hidden="true"></div>
+      </div>
+    </aside>
+
+    <!-- Main area: cockpit (~80%) -->
+    <main class="cockpit">
+      <!-- Header above calculator: lives (left), level (center), score (right) -->
+      <div class="cockpit-header">
+        <div class="lives" aria-label="Lives">
+          <div class="life-rocket life-rocket-full" id="flame1" data-life="1"></div>
+          <div class="life-rocket life-rocket-full" id="flame2" data-life="2"></div>
+          <div class="life-rocket life-rocket-full" id="flame3" data-life="3"></div>
+        </div>
+        <p class="level-display" id="levelDisplay" aria-live="polite">Level 1</p>
+        <div class="score-wrap"><span class="score-label">Score</span> <span class="score-display" id="scoreDisplay" aria-live="polite">0</span></div>
+      </div>
+      <div class="cockpit-frame">
+        <!-- Problem and answer display -->
+        <div class="display-area">
+          <p class="math-problem" id="mathProblem" aria-live="polite">7 + 5 = ?</p>
+          <p class="answer-display" id="answerDisplay" aria-live="polite">?</p>
+        </div>
+
+        <!-- Keypad: 3 cols numbers + Delete, then Submit full width -->
+        <div class="keypad">
+          <button type="button" class="keypad-btn num" data-digit="1">1</button>
+          <button type="button" class="keypad-btn num" data-digit="2">2</button>
+          <button type="button" class="keypad-btn num" data-digit="3">3</button>
+          <button type="button" class="keypad-btn num" data-digit="4">4</button>
+          <button type="button" class="keypad-btn num" data-digit="5">5</button>
+          <button type="button" class="keypad-btn num" data-digit="6">6</button>
+          <button type="button" class="keypad-btn num" data-digit="7">7</button>
+          <button type="button" class="keypad-btn num" data-digit="8">8</button>
+          <button type="button" class="keypad-btn num" data-digit="9">9</button>
+          <button type="button" class="keypad-btn num" data-digit="0">0</button>
+          <button type="button" class="keypad-btn delete" id="btnDelete">Del</button>
+          <button type="button" class="keypad-btn submit submit-full" id="btnSubmit">Submit</button>
+        </div>
+      </div>
+
+      <!-- Feedback overlay: green check / red X -->
+      <div class="feedback-overlay" id="feedbackOverlay" aria-hidden="true">
+        <div class="feedback-check" id="feedbackCheck"></div>
+        <div class="feedback-x" id="feedbackX"></div>
+      </div>
+
+      <!-- Game over overlay -->
+      <div class="game-over-overlay hidden" id="gameOverOverlay">
+        <p class="game-over-text" id="gameOverText">G A M E &nbsp;&nbsp; O V E R</p>
+        <button type="button" class="play-again-btn" id="playAgainBtn">Play Again</button>
+      </div>
+
+      <!-- Level complete: full-width planet (top 1/5), rocket + dancing astronaut, Continue -->
+      <div class="level-complete-overlay hidden" id="levelCompleteOverlay">
+        <p class="level-complete-text">Great job! Advance to next planet!</p>
+        <div class="level-complete-scene">
+          <div class="level-complete-planet-wrap">
+            <div class="level-complete-planet" id="levelCompletePlanet"></div>
+          </div>
+          <div class="level-complete-surface">
+            <div class="level-complete-rocket">
+            <span class="lc-rocket-window"></span>
+            <span class="lc-rocket-fins"></span>
+            <span class="lc-rocket-base"></span>
+          </div>
+            <div class="astronaut-dancing" id="astronautDancing"></div>
+          </div>
+        </div>
+        <button type="button" class="continue-btn" id="continueBtn">Continue</button>
+      </div>
+
+      <!-- Win overlay (game over only; level win uses level-complete) -->
+      <div class="win-overlay hidden" id="winOverlay">
+        <p class="win-text">You reached the planet!</p>
+        <button type="button" class="play-again-btn" id="playAgainBtnWin">Play Again</button>
+      </div>
+    </main>
+
+    <!-- Intro overlay: title (fixed), click to start, full-width ground, scenes, countdown -->
+    <div class="intro-overlay" id="introOverlay">
+      <h1 class="game-title" id="gameTitle">Planet Hopper</h1>
+      <div class="click-to-start" id="clickToStart" aria-label="Click or tap to start">Click to start</div>
+      <div class="intro-ground" id="introGround" aria-hidden="true"></div>
+      <div class="blast-off-scene hidden" id="blastOffScene">
+        <div class="blast-off-rocket" id="blastOffRocket">
+          <div class="blast-nose"></div>
+          <div class="blast-body">
+            <div class="blast-window"></div>
+            <div class="blast-panel"></div>
+          </div>
+          <div class="blast-fins"></div>
+          <div class="blast-base"></div>
+          <div class="intro-engine-flame" id="introEngineFlame"></div>
+        </div>
+      </div>
+      <div class="intro-scene" id="introScene">
+        <div class="spaceship-intro" id="spaceshipIntro">
+          <div class="ship-pixel-intro">
+            <div class="pixel-nose"></div>
+            <div class="pixel-nose-tip"></div>
+            <div class="pixel-body-intro">
+              <div class="pixel-window"></div>
+            </div>
+            <div class="pixel-body-stripe"></div>
+            <div class="pixel-fins-intro"></div>
+            <div class="pixel-base-intro"></div>
+          </div>
+          <div class="door-left" id="doorLeft"></div>
+          <div class="door-right" id="doorRight"></div>
+          <div class="ladder-intro"></div>
+        </div>
+        <div class="astronaut" id="astronaut"></div>
+      </div>
+      <div class="countdown-overlay hidden" id="countdownOverlay">
+        <span class="countdown-number" id="countdownNumber">3</span>
+      </div>
+    </div>
+  </div>
+
+  <audio id="startSoundtrack" preload="auto" loop>
+    <source src="sounds/Hero Immortal.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="countdownSound" preload="auto">
+    <source src="sounds/3 2 1 go_noise-removal_equalized.wav" type="audio/wav">
+  </audio>
+  <audio id="rocketLaunchSound" preload="auto">
+    <source src="sounds/rocket_launch.wav" type="audio/wav">
+  </audio>
+  <audio id="rocketSound" preload="auto">
+    <source src="sounds/rocket.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="levelCompleteSound" preload="auto">
+    <source src="sounds/newthingget.ogg" type="audio/ogg">
+  </audio>
+  <audio id="correctSound" preload="auto">
+    <source src="sounds/Picked Coin Echo 2.wav" type="audio/wav">
+  </audio>
+  <audio id="wrongSound" preload="auto">
+    <source src="sounds/thunk.wav" type="audio/wav">
+  </audio>
+
+  <script src="game.js"></script>
+  <script>
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      // Service workers require a secure context (HTTPS or localhost).
+      if (!window.isSecureContext) return;
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function (err) {
+          console.warn('Service worker registration failed:', err);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
