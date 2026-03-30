@@ -334,6 +334,59 @@
     mathProblemEl.textContent = state.currentProblem.text.replace('?', displayValue);
   }
 
+  function parseWholeNumber(str) {
+    if (typeof str !== 'string') return NaN;
+    var normalized = str.replace(/,/g, '').trim();
+    if (!/^\d+$/.test(normalized)) return NaN;
+    return Number(normalized);
+  }
+
+  function solveFromProblemText(text) {
+    if (typeof text !== 'string') return null;
+
+    var roundMatch = text.match(/^Round\s+([\d,]+)\s+to the nearest\s+(tens|hundreds|thousands|ten thousands|hundred thousands)\.$/);
+    if (roundMatch) {
+      var rawNum = parseWholeNumber(roundMatch[1]);
+      if (!isFinite(rawNum)) return null;
+      var placeMap = {
+        'tens': 10,
+        'hundreds': 100,
+        'thousands': 1000,
+        'ten thousands': 10000,
+        'hundred thousands': 100000
+      };
+      var divisor = placeMap[roundMatch[2]];
+      if (!divisor) return null;
+      return Math.round(rawNum / divisor) * divisor;
+    }
+
+    var parenMatch = text.match(/^\(([\d,]+)\s*([+\-])\s*([\d,]+)\)\s*([+\-])\s*([\d,]+)\s*=\s*\?$/);
+    if (parenMatch) {
+      var p1 = parseWholeNumber(parenMatch[1]);
+      var p2 = parseWholeNumber(parenMatch[3]);
+      var p3 = parseWholeNumber(parenMatch[5]);
+      if (!isFinite(p1) || !isFinite(p2) || !isFinite(p3)) return null;
+      var first = parenMatch[2] === '+' ? (p1 + p2) : (p1 - p2);
+      return parenMatch[4] === '+' ? (first + p3) : (first - p3);
+    }
+
+    var basicMatch = text.match(/^([\d,]+)\s*([+\-x÷])\s*([\d,]+)\s*=\s*\?$/);
+    if (basicMatch) {
+      var b1 = parseWholeNumber(basicMatch[1]);
+      var b2 = parseWholeNumber(basicMatch[3]);
+      if (!isFinite(b1) || !isFinite(b2)) return null;
+      switch (basicMatch[2]) {
+        case '+': return b1 + b2;
+        case '-': return b1 - b2;
+        case 'x': return b1 * b2;
+        case '÷': return b2 === 0 ? null : (b1 / b2);
+        default: return null;
+      }
+    }
+
+    return null;
+  }
+
   function showProblem() {
     state.currentProblem = generateProblem();
     state.userInput = '';
@@ -402,8 +455,12 @@
   function submitAnswer() {
     if (state.phase !== 'playing' || !state.currentProblem) return;
     var trimmed = String(state.userInput).trim();
-    var num = trimmed === '' ? NaN : parseInt(trimmed, 10);
+    var num = trimmed === '' ? NaN : parseWholeNumber(trimmed);
     var expected = Number(state.currentProblem.answer);
+    var solvedFromText = solveFromProblemText(state.currentProblem.text);
+    if (solvedFromText !== null && isFinite(solvedFromText)) {
+      expected = Number(solvedFromText);
+    }
     var correct = trimmed !== '' && !isNaN(num) && num === expected && isFinite(expected);
 
     var points = getPointsPerLevel(state.level);
