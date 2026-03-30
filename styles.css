@@ -389,29 +389,34 @@ body {
 .keypad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 14px;
   margin-top: auto;
+  justify-items: center;
 }
 
 .keypad-btn {
-  min-height: 54px;
+  width: 100%;
+  max-width: 110px;
+  aspect-ratio: 1 / 1;
   font-family: "Press Start 2P", monospace;
-  font-size: 20px;
-  border: 3px solid #1a1a2e;
-  background: #3d3d5c;
-  color: #e8e8e8;
+  font-size: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  background: #2f3035;
+  color: #ffffff;
   cursor: pointer;
-  transition: none;
+  transition: transform 0.06s ease, filter 0.12s ease;
   image-rendering: pixelated;
   touch-action: manipulation;
 }
 
 .keypad-btn:hover {
-  background: #5c5c8a;
+  filter: brightness(1.08);
 }
 
 .keypad-btn:active {
-  background: #2a2a4e;
+  transform: scale(0.96);
+  filter: brightness(0.95);
 }
 
 .keypad-btn.num {
@@ -420,26 +425,26 @@ body {
 
 .keypad-btn.delete {
   grid-column: span 1;
-  background: #5c4a3a;
-  font-size: 18px;
+  background: #4f5158;
+  position: relative;
 }
 
-.keypad-btn.delete:hover {
-  background: #7c6a5a;
+.keypad-btn.delete::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 52%;
+  height: 52%;
+  background: center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M42 18 L82 18 Q94 18 94 30 L94 70 Q94 82 82 82 L42 82 L10 50 Z' fill='none' stroke='white' stroke-width='8' stroke-linejoin='round'/%3E%3Cpath d='M54 38 L74 62 M74 38 L54 62' stroke='white' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 .keypad-btn.submit {
   grid-column: span 1;
-  background: #2a4a3a;
-}
-
-.keypad-btn.submit.submit-full {
-  grid-column: 1 / -1;
-  width: 100%;
-}
-
-.keypad-btn.submit:hover {
-  background: #3a5a4a;
+  background: #ff9f0a;
+  color: #ffffff;
+  font-size: 14px;
+  letter-spacing: 0.02em;
 }
 
 /* Feedback overlay (pixel check / X) */
@@ -1252,17 +1257,21 @@ body {
   }
 
   .keypad {
-    gap: 6px;
+    gap: 8px;
   }
 
   .keypad-btn {
-    min-height: 36px;
-    font-size: 16px;
+    max-width: 82px;
+    font-size: 20px;
     border-width: 2px;
   }
 
   .keypad-btn.delete {
-    font-size: 14px;
+    max-width: 82px;
+  }
+
+  .keypad-btn.submit {
+    font-size: 10px;
   }
 
   .continue-btn,
