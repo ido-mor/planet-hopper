@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planet-hopper-v2';
+const CACHE_NAME = 'planet-hopper-v3';
 
 // Keep required offline files small and reliable.
 const REQUIRED_ASSETS = [
@@ -50,25 +50,47 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const reqUrl = new URL(event.request.url);
+  const isSameOrigin = reqUrl.origin === self.location.origin;
+  const isNavigation = event.request.mode === 'navigate';
+
+  // For document navigations, prefer network to pick up fresh deploys quickly.
+  if (isNavigation) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic' && isSameOrigin) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-
-      return fetch(event.request)
+      var networkFetch = fetch(event.request)
         .then((response) => {
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
           const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => {
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
+          if (isSameOrigin) {
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
           }
-          return new Response('', { status: 503, statusText: 'Offline' });
+          return response;
         });
+
+      // Stale-while-revalidate for static assets.
+      if (cached) {
+        event.waitUntil(networkFetch.catch(() => null));
+        return cached;
+      }
+
+      return networkFetch.catch(() => new Response('', { status: 503, statusText: 'Offline' }));
     })
   );
 });
