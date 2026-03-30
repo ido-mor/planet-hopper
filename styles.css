@@ -1268,10 +1268,6 @@ body {
     border-width: 2px;
   }
 
-  .keypad-btn.delete {
-    max-width: 82px;
-  }
-
   .keypad-btn.submit {
     font-size: 10px;
   }
