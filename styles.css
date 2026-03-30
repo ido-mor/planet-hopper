@@ -1162,6 +1162,18 @@ body {
 
 /* iPhone landscape and other small-height screens */
 @media (orientation: landscape) and (max-height: 500px) {
+  .game-title {
+    top: 10%;
+    line-height: 1.18;
+  }
+
+  .click-to-start {
+    top: 31%;
+    z-index: 4;
+    font-size: 12px;
+    text-shadow: 2px 2px 0 #1a1a2e;
+  }
+
   .map-panel {
     flex-basis: 18%;
     min-width: 92px;
