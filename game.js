@@ -83,17 +83,27 @@
   var audioCtx = null;
   var audioUnlocked = false;
 
+  function primeAudioElement(el) {
+    if (!el || !el.play) return;
+    var originalVolume = typeof el.volume === 'number' ? el.volume : 1;
+    el.volume = 0;
+    el.currentTime = 0;
+    el.play().then(function () {
+      el.pause();
+      el.currentTime = 0;
+      el.volume = originalVolume;
+    }).catch(function () {
+      el.volume = originalVolume;
+    });
+  }
+
   function unlockAudio() {
     if (audioUnlocked) return;
     audioUnlocked = true;
-    if (rocketSound && rocketSound.play) {
-      rocketSound.volume = 0;
-      rocketSound.currentTime = 0;
-      rocketSound.play().then(function () {
-        rocketSound.pause();
-        rocketSound.currentTime = 0;
-      }).catch(function () {});
-    }
+    // Prime key audio elements on first user gesture (especially important on iOS).
+    primeAudioElement(rocketSound);
+    primeAudioElement(rocketLaunchSound);
+    primeAudioElement(countdownSound);
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
   }
@@ -531,6 +541,7 @@
             blastOffScene.classList.add('blast-off-active');
             if (audio && audio.play) {
               unlockAudio();
+              audio.load();
               audio.currentTime = 0;
               audio.volume = 0.8;
               audio.play().catch(function () {});
