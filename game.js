@@ -102,7 +102,6 @@
     audioUnlocked = true;
     // Prime key audio elements on first user gesture (especially important on iOS).
     primeAudioElement(rocketSound);
-    primeAudioElement(rocketLaunchSound);
     primeAudioElement(countdownSound);
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -598,7 +597,6 @@
             blastOffScene.classList.add('blast-off-active');
             if (audio && audio.play) {
               unlockAudio();
-              audio.load();
               audio.currentTime = 0;
               audio.volume = 0.8;
               audio.play().catch(function () {});
