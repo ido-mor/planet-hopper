@@ -1310,9 +1310,9 @@ body {
 
   .keypad {
     --key-size: 54px;
-    --key-gap: 30px; /* 5x horizontal spacing between number keys */
-    --key-row-gap: 40px; /* 5x vertical spacing between number rows */
-    --action-row-offset: 10px;
+    --key-gap: 10px;
+    --key-row-gap: 14px;
+    --action-row-offset: 0px;
     column-gap: var(--key-gap);
     row-gap: var(--key-row-gap);
   }
@@ -1323,7 +1323,7 @@ body {
   }
 
   .keypad-btn.submit {
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .continue-btn,
