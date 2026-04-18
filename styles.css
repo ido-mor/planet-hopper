@@ -421,14 +421,15 @@ body {
   letter-spacing: 0;
 }
 
-/* Keypad: six columns — 1–5 + Del, then 6–0 + Submit */
+/* Keypad: six columns — 1–5 + Del, then 6–0 + Submit (last column wider) */
 .keypad {
   display: grid;
   --key-size: 86px;
+  --action-btn-width: 180px;
   --key-gap: 8px;
   --key-row-gap: 12px;
   --action-row-offset: 0px;
-  grid-template-columns: repeat(6, var(--key-size));
+  grid-template-columns: repeat(5, var(--key-size)) var(--action-btn-width);
   column-gap: var(--key-gap);
   row-gap: var(--key-row-gap);
   margin-top: auto;
@@ -487,11 +488,17 @@ body {
   letter-spacing: 0.02em;
 }
 
+.keypad-btn.delete,
+.keypad-btn.submit {
+  width: var(--action-btn-width);
+  box-sizing: border-box;
+  border-radius: calc(var(--key-size) / 2);
+}
+
 .keypad-btn.keypad-action-left,
 .keypad-btn.keypad-action-right {
   grid-column: span 1;
   margin-top: 0;
-  width: var(--key-size);
 }
 
 /* Feedback overlay (pixel check / X) */
@@ -1339,6 +1346,7 @@ body {
 
   .keypad {
     --key-size: 54px;
+    --action-btn-width: 180px;
     --key-gap: 10px;
     --key-row-gap: 14px;
     --action-row-offset: 0px;
