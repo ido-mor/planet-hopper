@@ -65,22 +65,23 @@
       <div class="cockpit-frame">
         <!-- Problem and answer display -->
         <div class="display-area">
-          <p class="math-problem" id="mathProblem" aria-live="polite">7 + 5 = ?</p>
+          <p class="math-problem" id="mathProblem" aria-live="polite">7 + 5 =</p>
+          <div class="answer-viewport is-empty" id="answerInputDisplay" aria-live="polite" aria-label="Your answer"></div>
         </div>
 
-        <!-- Keypad: 3 cols numbers + Delete, then Submit full width -->
-        <div class="keypad">
+        <!-- Keypad: row1 = 1–5 + Del; row2 = 6–0 + Submit (six columns) -->
+        <div class="keypad" id="keypad">
           <button type="button" class="keypad-btn num" data-digit="1">1</button>
           <button type="button" class="keypad-btn num" data-digit="2">2</button>
           <button type="button" class="keypad-btn num" data-digit="3">3</button>
           <button type="button" class="keypad-btn num" data-digit="4">4</button>
           <button type="button" class="keypad-btn num" data-digit="5">5</button>
+          <button type="button" class="keypad-btn delete keypad-action-left" id="btnDelete" aria-label="Delete"></button>
           <button type="button" class="keypad-btn num" data-digit="6">6</button>
           <button type="button" class="keypad-btn num" data-digit="7">7</button>
           <button type="button" class="keypad-btn num" data-digit="8">8</button>
           <button type="button" class="keypad-btn num" data-digit="9">9</button>
           <button type="button" class="keypad-btn num" data-digit="0">0</button>
-          <button type="button" class="keypad-btn delete keypad-action-left" id="btnDelete" aria-label="Delete"></button>
           <button type="button" class="keypad-btn submit keypad-action-right" id="btnSubmit">Submit</button>
         </div>
       </div>
@@ -188,6 +189,9 @@
   </audio>
   <audio id="wrongSound" preload="auto">
     <source src="sounds/thunk.wav" type="audio/wav">
+  </audio>
+  <audio id="keypadClickSound" preload="auto">
+    <source src="sounds/click_sound_6.mp3" type="audio/mpeg">
   </audio>
 
   <script src="game.js"></script>

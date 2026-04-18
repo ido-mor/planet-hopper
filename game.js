@@ -33,6 +33,8 @@
   var targetPlanet = document.getElementById('targetPlanet');
   var groundPlanet = document.getElementById('groundPlanet');
   var mathProblemEl = document.getElementById('mathProblem');
+  var answerInputDisplay = document.getElementById('answerInputDisplay');
+  var keypadEl = document.getElementById('keypad');
   var feedbackOverlay = document.getElementById('feedbackOverlay');
   var feedbackCheck = document.getElementById('feedbackCheck');
   var feedbackX = document.getElementById('feedbackX');
@@ -63,6 +65,7 @@
   var levelCompleteSound = document.getElementById('levelCompleteSound');
   var correctSound = document.getElementById('correctSound');
   var wrongSound = document.getElementById('wrongSound');
+  var keypadClickSound = document.getElementById('keypadClickSound');
   var clickToStart = document.getElementById('clickToStart');
   var levelDisplayEl = document.getElementById('levelDisplay');
   var scoreDisplayEl = document.getElementById('scoreDisplay');
@@ -103,6 +106,7 @@
     // Prime key audio elements on first user gesture (especially important on iOS).
     primeAudioElement(rocketSound);
     primeAudioElement(countdownSound);
+    primeAudioElement(keypadClickSound);
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
   }
@@ -121,6 +125,18 @@
     wrongSound.volume = 0.7;
     wrongSound.currentTime = 0;
     wrongSound.play().catch(function () {});
+  }
+
+  function playKeypadClick() {
+    if (!keypadClickSound || !keypadClickSound.play) return;
+    unlockAudio();
+    keypadClickSound.volume = 0.9;
+    keypadClickSound.currentTime = 0;
+    keypadClickSound.play().catch(function () {});
+  }
+
+  function problemStem(text) {
+    return text.replace(/\s*\?\s*$/, '').trim();
   }
 
   function randomInt(min, max) {
@@ -329,8 +345,11 @@
 
   function renderProblemText() {
     if (!state.currentProblem) return;
-    var displayValue = state.userInput || '?';
-    mathProblemEl.textContent = state.currentProblem.text.replace('?', displayValue);
+    mathProblemEl.textContent = problemStem(state.currentProblem.text);
+    if (answerInputDisplay) {
+      answerInputDisplay.textContent = state.userInput;
+      answerInputDisplay.classList.toggle('is-empty', !state.userInput);
+    }
   }
 
   function parseWholeNumber(str) {
@@ -694,15 +713,22 @@
     unlockAudio();
   }
 
-  document.querySelectorAll('.keypad-btn.num').forEach(function (btn) {
-    btn.addEventListener('click', function () {
+  if (keypadEl) {
+    keypadEl.addEventListener('click', function (e) {
+      var btn = e.target.closest('.keypad-btn');
+      if (!btn) return;
+      playKeypadClick();
       onFirstInteraction();
-      var d = btn.getAttribute('data-digit');
-      if (d != null) addDigit(parseInt(d, 10));
+      if (btn.classList.contains('num')) {
+        var d = btn.getAttribute('data-digit');
+        if (d != null) addDigit(parseInt(d, 10));
+      } else if (btn === btnDelete) {
+        deleteDigit();
+      } else if (btn === btnSubmit) {
+        submitAnswer();
+      }
     });
-  });
-  btnDelete.addEventListener('click', function () { onFirstInteraction(); deleteDigit(); });
-  btnSubmit.addEventListener('click', function () { onFirstInteraction(); submitAnswer(); });
+  }
 
   continueBtn.addEventListener('click', continueToNextLevel);
   playAgainBtn.addEventListener('click', playAgain);

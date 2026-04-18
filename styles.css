@@ -368,7 +368,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
+  align-items: stretch;
   gap: 12px;
   min-height: 100px;
   background: #1a1a2e;
@@ -391,16 +391,44 @@ body {
   border-radius: 43px;
   background: #1a1a2e;
   padding: 0 18px;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
-/* Keypad: 3 columns, then Submit full width */
+.answer-viewport {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 12px 14px;
+  font-family: "Press Start 2P", monospace;
+  font-size: 26px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-align: center;
+  color: #f0e860;
+  background: #0f0f1a;
+  border: 3px solid #5c5c8a;
+  word-break: break-all;
+}
+
+.answer-viewport.is-empty {
+  color: #5c5c8a;
+}
+
+.answer-viewport.is-empty::before {
+  content: "\2026";
+  letter-spacing: 0;
+}
+
+/* Keypad: six columns — 1–5 + Del, then 6–0 + Submit */
 .keypad {
   display: grid;
   --key-size: 86px;
   --key-gap: 8px;
   --key-row-gap: 12px;
-  --action-row-offset: calc(var(--key-row-gap) * 2);
-  grid-template-columns: repeat(5, var(--key-size));
+  --action-row-offset: 0px;
+  grid-template-columns: repeat(6, var(--key-size));
   column-gap: var(--key-gap);
   row-gap: var(--key-row-gap);
   margin-top: auto;
@@ -452,25 +480,18 @@ body {
 }
 
 .keypad-btn.submit {
-  grid-column: span 2;
+  grid-column: span 1;
   background: #ff9f0a;
   color: #ffffff;
-  font-size: 14px;
+  font-size: clamp(10px, 2.2vw, 14px);
   letter-spacing: 0.02em;
-  width: calc(var(--key-size) * 2 + var(--key-gap));
-  border-radius: calc(var(--key-size) / 2);
 }
 
-.keypad-btn.keypad-action-left {
-  grid-column: 2 / span 2;
-  width: calc(var(--key-size) * 2 + var(--key-gap));
-  border-radius: calc(var(--key-size) / 2);
-  margin-top: var(--action-row-offset);
-}
-
+.keypad-btn.keypad-action-left,
 .keypad-btn.keypad-action-right {
-  grid-column: 4 / span 2;
-  margin-top: var(--action-row-offset);
+  grid-column: span 1;
+  margin-top: 0;
+  width: var(--key-size);
 }
 
 /* Feedback overlay (pixel check / X) */
@@ -1291,7 +1312,8 @@ body {
   }
 
   .display-area {
-    min-height: 0;
+    flex: 1 1 auto;
+    min-height: 88px;
     gap: 6px;
     margin-bottom: 8px;
     border-width: 3px;
@@ -1306,6 +1328,13 @@ body {
     min-height: 54px;
     border-radius: 27px;
     padding: 0 12px;
+  }
+
+  .answer-viewport {
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: clamp(16px, 4.2vw, 22px);
+    border-width: 2px;
   }
 
   .keypad {
