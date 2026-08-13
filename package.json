@@ -2,6 +2,7 @@
   "name": "math-rocket-game",
   "private": true,
   "scripts": {
-    "iphone": "./start-iphone.sh"
+    "iphone": "./start-iphone.sh",
+    "start": "python3 -m http.server 8000 --bind 127.0.0.1"
   }
 }

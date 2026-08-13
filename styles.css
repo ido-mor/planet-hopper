@@ -488,6 +488,19 @@ body {
   letter-spacing: 0.02em;
 }
 
+.keypad-btn.submit:disabled {
+  opacity: 0.4;
+  cursor: default;
+  filter: none;
+  transform: none;
+}
+
+.keypad-btn.submit:disabled:hover,
+.keypad-btn.submit:disabled:active {
+  filter: none;
+  transform: none;
+}
+
 .keypad-btn.delete,
 .keypad-btn.submit {
   width: var(--action-btn-width);
@@ -801,6 +814,17 @@ body {
     -2px 2px 0 #0ff,
     0 0 8px #0ff;
   animation: titleOutline 3s ease-in-out infinite;
+}
+
+.game-title.fade-out {
+  animation:
+    titleOutline 3s ease-in-out infinite,
+    titleFadeOut 500ms steps(8, end) forwards;
+}
+
+@keyframes titleFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes titleOutline {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planet-hopper-v3';
+const CACHE_NAME = 'planet-hopper-v5';
 
 // Keep required offline files small and reliable.
 const REQUIRED_ASSETS = [
@@ -8,14 +8,15 @@ const REQUIRED_ASSETS = [
   './game.js',
   './manifest.webmanifest',
   './fonts/Pixeboy-z8XGD.ttf',
-  './assets/icons/icon-192.svg',
-  './assets/icons/icon-512.svg'
+  './assets/icons/apple-touch-icon.png',
+  './assets/icons/icon-192.png',
+  './assets/icons/icon-512.png'
 ];
 
 // Optional media should not block install if any request fails.
 const OPTIONAL_ASSETS = [
   './sounds/Hero%20Immortal.mp3',
-  './sounds/3%202%201%20go_noise-removal_equalized.wav',
+  './sounds/3%202%201%20go_noise-removal_equalized_lower.wav',
   './sounds/rocket_launch.wav',
   './sounds/newthingget.ogg',
   './sounds/Picked%20Coin%20Echo%202.wav',

@@ -9,14 +9,15 @@
   <meta name="apple-mobile-web-app-title" content="Planet Hopper">
   <title>Astronaut Math Rocket</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/svg+xml" href="assets/icons/icon-192.svg">
-  <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <audio id="startSoundtrack" src="sounds/Hero Immortal.mp3" autoplay loop preload="auto"></audio>
   <div class="rotate-device-overlay" id="rotateDeviceOverlay" aria-hidden="true">
     <p>Rotate your iPhone to landscape to play.</p>
   </div>
@@ -82,7 +83,7 @@
           <button type="button" class="keypad-btn num" data-digit="8">8</button>
           <button type="button" class="keypad-btn num" data-digit="9">9</button>
           <button type="button" class="keypad-btn num" data-digit="0">0</button>
-          <button type="button" class="keypad-btn submit keypad-action-right" id="btnSubmit">Submit</button>
+          <button type="button" class="keypad-btn submit keypad-action-right" id="btnSubmit" disabled>Submit</button>
         </div>
       </div>
 
@@ -127,7 +128,7 @@
     <!-- Intro overlay: title (fixed), click to start, full-width ground, scenes, countdown -->
     <div class="intro-overlay" id="introOverlay">
       <h1 class="game-title" id="gameTitle">Planet Hopper</h1>
-      <div class="click-to-start" id="clickToStart" aria-label="Click or tap to start">Click to start</div>
+      <div class="click-to-start" id="clickToStart" aria-label="Click or tap to play">Click to play</div>
       <div class="intro-ground" id="introGround" aria-hidden="true"></div>
       <div class="blast-off-scene hidden" id="blastOffScene">
         <div class="launch-scaffold" aria-hidden="true">
@@ -169,11 +170,8 @@
     </div>
   </div>
 
-  <audio id="startSoundtrack" preload="auto" loop>
-    <source src="sounds/Hero Immortal.mp3" type="audio/mpeg">
-  </audio>
   <audio id="countdownSound" preload="auto">
-    <source src="sounds/3 2 1 go_noise-removal_equalized.wav" type="audio/wav">
+    <source src="sounds/3 2 1 go_noise-removal_equalized_lower.wav" type="audio/wav">
   </audio>
   <audio id="rocketLaunchSound" preload="auto">
     <source src="sounds/rocket_launch.wav" type="audio/wav">

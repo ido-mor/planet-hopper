@@ -67,6 +67,7 @@
   var wrongSound = document.getElementById('wrongSound');
   var keypadClickSound = document.getElementById('keypadClickSound');
   var clickToStart = document.getElementById('clickToStart');
+  var gameTitle = document.getElementById('gameTitle');
   var levelDisplayEl = document.getElementById('levelDisplay');
   var scoreDisplayEl = document.getElementById('scoreDisplay');
 
@@ -85,6 +86,7 @@
   // Web Audio for ding (correct) and buzzer (wrong); unlocked on first user gesture
   var audioCtx = null;
   var audioUnlocked = false;
+  var startSoundtrackDesired = true;
 
   function primeAudioElement(el) {
     if (!el || !el.play) return;
@@ -95,6 +97,7 @@
       el.pause();
       el.currentTime = 0;
       el.volume = originalVolume;
+      playStartSoundtrack();
     }).catch(function () {
       el.volume = originalVolume;
     });
@@ -104,11 +107,13 @@
     if (audioUnlocked) return;
     audioUnlocked = true;
     // Prime key audio elements on first user gesture (especially important on iOS).
+    primeAudioElement(rocketLaunchSound);
     primeAudioElement(rocketSound);
     primeAudioElement(countdownSound);
     primeAudioElement(keypadClickSound);
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
+    playStartSoundtrack();
   }
 
   function playCorrectSound() {
@@ -344,11 +349,15 @@
   }
 
   function renderProblemText() {
-    if (!state.currentProblem) return;
-    mathProblemEl.textContent = problemStem(state.currentProblem.text);
-    if (answerInputDisplay) {
-      answerInputDisplay.textContent = state.userInput;
-      answerInputDisplay.classList.toggle('is-empty', !state.userInput);
+    if (state.currentProblem) {
+      mathProblemEl.textContent = problemStem(state.currentProblem.text);
+      if (answerInputDisplay) {
+        answerInputDisplay.textContent = state.userInput;
+        answerInputDisplay.classList.toggle('is-empty', !state.userInput);
+      }
+    }
+    if (btnSubmit) {
+      btnSubmit.disabled = !String(state.userInput || '').trim();
     }
   }
 
@@ -472,7 +481,9 @@
 
   function submitAnswer() {
     if (state.phase !== 'playing' || !state.currentProblem) return;
+    if (btnSubmit && btnSubmit.disabled) return;
     var trimmed = String(state.userInput).trim();
+    if (!trimmed) return;
     var num = trimmed === '' ? NaN : parseWholeNumber(trimmed);
     var expected = Number(state.currentProblem.answer);
     var solvedFromText = solveFromProblemText(state.currentProblem.text);
@@ -514,10 +525,20 @@
     renderProblemText();
   }
 
+  var rocketSoundToken = 0;
+
+  function stopRocketSound() {
+    rocketSoundToken += 1;
+    if (!rocketSound) return;
+    rocketSound.pause();
+    rocketSound.currentTime = 0;
+  }
+
   function playRocketSound() {
     if (!rocketSound || !rocketSound.play) return;
     unlockAudio();
     var audio = rocketSound;
+    var token = ++rocketSoundToken;
     audio.volume = 0;
     audio.currentTime = 0;
     audio.play().catch(function () {});
@@ -528,6 +549,7 @@
     var fadeOutStart = duration - 500;
 
     function tick(now) {
+      if (token !== rocketSoundToken) return;
       var t = (now - start) / 1000;
       if (t >= duration) {
         audio.pause();
@@ -544,6 +566,19 @@
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
+  }
+
+  function playRocketLaunchSound() {
+    var audio = rocketLaunchSound;
+    if (!audio || !audio.play) return;
+    stopRocketSound();
+    unlockAudio();
+    audio.currentTime = 0;
+    audio.volume = 0.8;
+    audio.play().catch(function () {
+      audio.currentTime = 0;
+      audio.play().catch(function () {});
+    });
   }
 
   function runIntro() {
@@ -611,51 +646,22 @@
           blastOffScene.classList.remove('hidden');
           var durationSec = 3.5;
           var audio = rocketLaunchSound;
-          var startBlastOff = function () {
-            if (blastOffRocket) blastOffRocket.style.animationDuration = durationSec + 's';
-            blastOffScene.classList.add('blast-off-active');
-            if (audio && audio.play) {
-              unlockAudio();
-              audio.currentTime = 0;
-              audio.volume = 0.8;
-              audio.play().catch(function () {});
-            }
-            setTimeout(function () {
-              introOverlay.classList.add('hidden');
-              if (blastOffScene) {
-                blastOffScene.classList.add('hidden');
-                blastOffScene.classList.remove('blast-off-active');
-              }
-              if (blastOffRocket) blastOffRocket.style.animationDuration = '';
-              if (introScene) introScene.classList.remove('hidden');
-              startLevel();
-            }, durationSec * 1000);
-          };
           if (audio && isFinite(audio.duration) && audio.duration > 0) {
             durationSec = audio.duration;
-            startBlastOff();
-          } else if (audio) {
-            var started = false;
-            var onReady = function () {
-              if (started) return;
-              started = true;
-              if (isFinite(audio.duration) && audio.duration > 0) durationSec = audio.duration;
-              audio.removeEventListener('loadedmetadata', onReady);
-              audio.removeEventListener('durationchange', onReady);
-              startBlastOff();
-            };
-            audio.addEventListener('loadedmetadata', onReady);
-            audio.addEventListener('durationchange', onReady);
-            if (audio.readyState >= 1 && isFinite(audio.duration) && audio.duration > 0) {
-              durationSec = audio.duration;
-              onReady();
-            } else {
-              audio.load();
-              setTimeout(function () { if (!started) onReady(); }, 500);
-            }
-          } else {
-            startBlastOff();
           }
+          if (blastOffRocket) blastOffRocket.style.animationDuration = durationSec + 's';
+          blastOffScene.classList.add('blast-off-active');
+          playRocketLaunchSound();
+          setTimeout(function () {
+            introOverlay.classList.add('hidden');
+            if (blastOffScene) {
+              blastOffScene.classList.add('hidden');
+              blastOffScene.classList.remove('blast-off-active');
+            }
+            if (blastOffRocket) blastOffRocket.style.animationDuration = '';
+            if (introScene) introScene.classList.remove('hidden');
+            startLevel();
+          }, durationSec * 1000);
         } else {
           introOverlay.classList.add('hidden');
           startLevel();
@@ -741,7 +747,7 @@
       e.preventDefault();
     } else if (e.key === 'Enter') {
       onFirstInteraction();
-      submitAnswer();
+      if (!(btnSubmit && btnSubmit.disabled)) submitAnswer();
       e.preventDefault();
     } else if (e.key === 'Backspace') {
       onFirstInteraction();
@@ -750,21 +756,28 @@
     }
   });
 
-  var openingSoundtrackStarted = false;
+  function playStartSoundtrack() {
+    if (!startSoundtrackDesired || !startSoundtrack || !startSoundtrack.play) return;
+    if (!startSoundtrack.paused && !startSoundtrack.ended) return;
+    startSoundtrack.loop = true;
+    startSoundtrack.muted = false;
+    startSoundtrack.volume = 0.6;
+    var playPromise = startSoundtrack.play();
+    if (playPromise && playPromise.catch) playPromise.catch(function () {});
+  }
 
-  function fadeOutStartSoundtrack(done) {
-    if (!startSoundtrack || !startSoundtrack.play) {
+  function fadeOutStartSoundtrack(done, durationMs) {
+    startSoundtrackDesired = false;
+    if (!startSoundtrack || !startSoundtrack.play || startSoundtrack.paused || startSoundtrack.volume <= 0) {
+      if (startSoundtrack) {
+        startSoundtrack.pause();
+        startSoundtrack.currentTime = 0;
+      }
       if (done) done();
       return;
     }
     var startVol = startSoundtrack.volume;
-    if (startVol <= 0) {
-      startSoundtrack.pause();
-      startSoundtrack.currentTime = 0;
-      if (done) done();
-      return;
-    }
-    var duration = 1200;
+    var duration = durationMs || 1200;
     var start = performance.now();
     function tick(now) {
       var elapsed = now - start;
@@ -781,28 +794,33 @@
     requestAnimationFrame(tick);
   }
 
+  function restoreGameTitle() {
+    if (!gameTitle) return;
+    gameTitle.classList.remove('fade-out');
+  }
+
   introOverlay.addEventListener('click', function startGame() {
     if (clickToStart && clickToStart.classList.contains('hidden')) return;
-    if (!openingSoundtrackStarted) {
-      unlockAudio();
-      if (startSoundtrack && startSoundtrack.play) {
-        startSoundtrack.volume = 0.6;
-        startSoundtrack.currentTime = 0;
-        startSoundtrack.play().catch(function () {});
-      }
-      openingSoundtrackStarted = true;
-      if (clickToStart) clickToStart.textContent = 'Click to begin';
-      return;
-    }
     if (clickToStart) clickToStart.classList.add('hidden');
-    fadeOutStartSoundtrack(runIntro);
+    playStartSoundtrack();
+    unlockAudio();
+    if (gameTitle) gameTitle.classList.add('fade-out');
+    setTimeout(function () {
+      runIntro();
+      fadeOutStartSoundtrack(null, 2800);
+    }, 500);
   });
 
   updateShipPosition();
   updatePlanetColors();
   updateLevelDisplay();
   updateScoreDisplay();
+  restoreGameTitle();
   if (clickToStart) clickToStart.classList.remove('hidden');
   introOverlay.classList.remove('hidden');
   countdownOverlay.classList.add('hidden');
+  if (startSoundtrack) {
+    startSoundtrack.loop = true;
+    startSoundtrack.volume = 0.6;
+  }
 })();
