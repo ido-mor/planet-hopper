@@ -17,9 +17,9 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <audio id="startSoundtrack" src="sounds/Hero Immortal.mp3" autoplay loop preload="auto"></audio>
+  <audio id="startSoundtrack" src="sounds/Hero Immortal.mp3" loop preload="auto" playsinline></audio>
   <div class="rotate-device-overlay" id="rotateDeviceOverlay" aria-hidden="true">
-    <p>Rotate your iPhone to landscape to play.</p>
+    <p>Rotate your phone to landscape to play.</p>
   </div>
   <div class="game-container">
     <!-- Left panel: path map (~20%) -->
@@ -125,10 +125,13 @@
       </div>
     </main>
 
-    <!-- Intro overlay: title (fixed), click to start, full-width ground, scenes, countdown -->
+    <!-- Intro overlay: load tap, title, tap to play, full-width ground, scenes, countdown -->
     <div class="intro-overlay" id="introOverlay">
+      <div class="load-game-overlay" id="loadGameOverlay">
+        <p>Tap to load game.</p>
+      </div>
       <h1 class="game-title" id="gameTitle">Planet Hopper</h1>
-      <div class="click-to-start" id="clickToStart" aria-label="Click or tap to play">Click to play</div>
+      <div class="click-to-start" id="clickToStart" aria-label="Tap to play">Tap to play.</div>
       <div class="intro-ground" id="introGround" aria-hidden="true"></div>
       <div class="blast-off-scene hidden" id="blastOffScene">
         <div class="launch-scaffold" aria-hidden="true">
@@ -170,25 +173,25 @@
     </div>
   </div>
 
-  <audio id="countdownSound" preload="auto">
-    <source src="sounds/3 2 1 go_noise-removal_equalized_lower.wav" type="audio/wav">
+  <audio id="countdownSound" preload="auto" playsinline>
+    <source src="sounds/3 2 1 go_noise-removal_equalized_lower.mp3" type="audio/mpeg">
   </audio>
-  <audio id="rocketLaunchSound" preload="auto">
+  <audio id="rocketLaunchSound" preload="auto" playsinline>
     <source src="sounds/rocket_launch.wav" type="audio/wav">
   </audio>
-  <audio id="rocketSound" preload="auto">
+  <audio id="rocketSound" preload="auto" playsinline>
     <source src="sounds/rocket.mp3" type="audio/mpeg">
   </audio>
-  <audio id="levelCompleteSound" preload="auto">
-    <source src="sounds/newthingget.ogg" type="audio/ogg">
+  <audio id="levelCompleteSound" preload="auto" playsinline>
+    <source src="sounds/newthingget.mp3" type="audio/mpeg">
   </audio>
-  <audio id="correctSound" preload="auto">
-    <source src="sounds/Picked Coin Echo 2.wav" type="audio/wav">
+  <audio id="correctSound" preload="auto" playsinline>
+    <source src="sounds/Picked Coin Echo 2.mp3" type="audio/mpeg">
   </audio>
-  <audio id="wrongSound" preload="auto">
+  <audio id="wrongSound" preload="auto" playsinline>
     <source src="sounds/thunk.wav" type="audio/wav">
   </audio>
-  <audio id="keypadClickSound" preload="auto">
+  <audio id="keypadClickSound" preload="auto" playsinline>
     <source src="sounds/click_sound_6.mp3" type="audio/mpeg">
   </audio>
 

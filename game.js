@@ -67,6 +67,7 @@
   var wrongSound = document.getElementById('wrongSound');
   var keypadClickSound = document.getElementById('keypadClickSound');
   var clickToStart = document.getElementById('clickToStart');
+  var loadGameOverlay = document.getElementById('loadGameOverlay');
   var gameTitle = document.getElementById('gameTitle');
   var levelDisplayEl = document.getElementById('levelDisplay');
   var scoreDisplayEl = document.getElementById('scoreDisplay');
@@ -83,61 +84,188 @@
     if (scoreDisplayEl) scoreDisplayEl.textContent = formatNumber(state.score);
   }
 
-  // Web Audio for ding (correct) and buzzer (wrong); unlocked on first user gesture
+  // Music stays on an <audio> element (long loop). Short SFX use Web Audio so
+  // iOS can overlap them instead of cutting off the previous clip.
   var audioCtx = null;
   var audioUnlocked = false;
   var startSoundtrackDesired = true;
+  var sfxBuffers = {};
+  var sfxRaw = {};
+  var sfxDecoding = {};
+  var SFX_URLS = {
+    countdown: 'sounds/3 2 1 go_noise-removal_equalized_lower.mp3',
+    rocketLaunch: 'sounds/rocket_launch.wav',
+    click: 'sounds/click_sound_6.mp3',
+    correct: 'sounds/Picked Coin Echo 2.mp3',
+    wrong: 'sounds/thunk.wav',
+    levelComplete: 'sounds/newthingget.mp3'
+  };
 
-  function primeAudioElement(el) {
-    if (!el || !el.play) return;
-    var originalVolume = typeof el.volume === 'number' ? el.volume : 1;
-    el.volume = 0;
-    el.currentTime = 0;
-    el.play().then(function () {
-      el.pause();
-      el.currentTime = 0;
-      el.volume = originalVolume;
-      playStartSoundtrack();
+  function isLikelyIOS() {
+    var ua = navigator.userAgent || '';
+    if (/iPad|iPhone|iPod/.test(ua)) return true;
+    return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  }
+
+  function encodeAssetUrl(path) {
+    return path.split('/').map(function (part) {
+      return encodeURIComponent(part);
+    }).join('/');
+  }
+
+  function getAudioContext() {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function decodeAudioData(ctx, data) {
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      function ok(buffer) {
+        if (settled) return;
+        settled = true;
+        resolve(buffer);
+      }
+      function fail(err) {
+        if (settled) return;
+        settled = true;
+        reject(err);
+      }
+      try {
+        var result = ctx.decodeAudioData(data.slice(0), ok, fail);
+        if (result && typeof result.then === 'function') {
+          result.then(ok, fail);
+        }
+      } catch (err) {
+        fail(err);
+      }
+    });
+  }
+
+  function decodeAndStore(name, data, ctx) {
+    if (sfxBuffers[name]) return Promise.resolve(sfxBuffers[name]);
+    if (!data || !ctx) return Promise.resolve(null);
+    if (sfxDecoding[name]) return sfxDecoding[name];
+    sfxDecoding[name] = decodeAudioData(ctx, data).then(function (buffer) {
+      sfxBuffers[name] = buffer;
+      sfxDecoding[name] = null;
+      return buffer;
     }).catch(function () {
-      el.volume = originalVolume;
+      sfxDecoding[name] = null;
+      return null;
+    });
+    return sfxDecoding[name];
+  }
+
+  function prefetchSfx() {
+    Object.keys(SFX_URLS).forEach(function (name) {
+      fetch(encodeAssetUrl(SFX_URLS[name]))
+        .then(function (res) {
+          if (!res.ok) throw new Error('sfx fetch failed');
+          return res.arrayBuffer();
+        })
+        .then(function (data) {
+          sfxRaw[name] = data;
+          if (audioCtx) decodeAndStore(name, data, audioCtx);
+        })
+        .catch(function () {});
+    });
+  }
+
+  function loadSfxBuffers() {
+    var ctx = getAudioContext();
+    if (!ctx) return;
+    Object.keys(SFX_URLS).forEach(function (name) {
+      if (sfxRaw[name]) decodeAndStore(name, sfxRaw[name], ctx);
     });
   }
 
   function unlockAudio() {
-    if (audioUnlocked) return;
-    audioUnlocked = true;
-    // Prime key audio elements on first user gesture (especially important on iOS).
-    primeAudioElement(rocketLaunchSound);
-    primeAudioElement(rocketSound);
-    primeAudioElement(countdownSound);
-    primeAudioElement(keypadClickSound);
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    playStartSoundtrack();
+    var ctx = getAudioContext();
+    if (ctx) {
+      try {
+        var buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+        var src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+      } catch (err) {}
+    }
+    if (!audioUnlocked) {
+      audioUnlocked = true;
+      loadSfxBuffers();
+    }
+  }
+
+  function playHtmlSound(el, volume) {
+    if (!el || !el.play) return;
+    el.volume = volume;
+    try { el.currentTime = 0; } catch (err) {}
+    el.play().catch(function () {});
+  }
+
+  function playBuffer(buffer, volume) {
+    var ctx = getAudioContext();
+    if (!ctx || !buffer) return false;
+    try {
+      var src = ctx.createBufferSource();
+      src.buffer = buffer;
+      var gain = ctx.createGain();
+      gain.gain.value = volume;
+      src.connect(gain);
+      gain.connect(ctx.destination);
+      src.start(0);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function getSfxBuffer(name) {
+    var ctx = getAudioContext();
+    if (!ctx) return Promise.resolve(null);
+    if (sfxBuffers[name]) return Promise.resolve(sfxBuffers[name]);
+    var ready = sfxRaw[name]
+      ? Promise.resolve(sfxRaw[name])
+      : fetch(encodeAssetUrl(SFX_URLS[name]))
+          .then(function (res) {
+            if (!res.ok) throw new Error('sfx fetch failed');
+            return res.arrayBuffer();
+          })
+          .then(function (data) {
+            sfxRaw[name] = data;
+            return data;
+          });
+    return ready.then(function (data) {
+      return decodeAndStore(name, data, ctx);
+    }).catch(function () {
+      return null;
+    });
+  }
+
+  function playSfx(name, htmlEl, volume) {
+    unlockAudio();
+    var vol = volume == null ? 0.7 : volume;
+    if (playBuffer(sfxBuffers[name], vol)) return;
+    getSfxBuffer(name).then(function (buffer) {
+      if (playBuffer(buffer, vol)) return;
+      if (!isLikelyIOS()) playHtmlSound(htmlEl, vol);
+    });
   }
 
   function playCorrectSound() {
-    unlockAudio();
-    if (!correctSound || !correctSound.play) return;
-    correctSound.volume = 0.7;
-    correctSound.currentTime = 0;
-    correctSound.play().catch(function () {});
+    playSfx('correct', correctSound, 0.7);
   }
 
   function playWrongSound() {
-    unlockAudio();
-    if (!wrongSound || !wrongSound.play) return;
-    wrongSound.volume = 0.7;
-    wrongSound.currentTime = 0;
-    wrongSound.play().catch(function () {});
+    playSfx('wrong', wrongSound, 0.7);
   }
 
   function playKeypadClick() {
-    if (!keypadClickSound || !keypadClickSound.play) return;
-    unlockAudio();
-    keypadClickSound.volume = 0.9;
-    keypadClickSound.currentTime = 0;
-    keypadClickSound.play().catch(function () {});
+    playSfx('click', keypadClickSound, 0.9);
   }
 
   function problemStem(text) {
@@ -335,8 +463,27 @@
   }
 
   function updateShipPosition() {
-    var pct = 88 - state.currentStep * 8;
-    shipContainer.style.top = pct + '%';
+    if (!shipContainer || !groundPlanet || !targetPlanet) return;
+    var diagram = shipContainer.parentElement;
+    if (!diagram) return;
+    var diagramRect = diagram.getBoundingClientRect();
+    if (diagramRect.height < 8) return;
+    var shipH = shipContainer.offsetHeight || 60;
+    var groundTop = groundPlanet.getBoundingClientRect().top - diagramRect.top;
+    var planetBottom = targetPlanet.getBoundingClientRect().bottom - diagramRect.top;
+    var startTop = groundTop - shipH;
+    var endTop = planetBottom;
+    if (!isFinite(startTop) || !isFinite(endTop)) return;
+    var step = Math.max(0, Math.min(10, state.currentStep));
+    var topPx = startTop + (endTop - startTop) * (step / 10);
+    shipContainer.style.top = Math.round(topPx) + 'px';
+  }
+
+  function scheduleShipPosition() {
+    requestAnimationFrame(function () {
+      updateShipPosition();
+      requestAnimationFrame(updateShipPosition);
+    });
   }
 
   function updateLives() {
@@ -449,12 +596,7 @@
           levelCompletePlanet.style.background = PLANET_COLORS[(state.level - 1) % PLANET_COLORS.length];
           levelCompletePlanet.style.borderRadius = '50%';
         }
-        if (levelCompleteSound && levelCompleteSound.play) {
-          unlockAudio();
-          levelCompleteSound.currentTime = 0;
-          levelCompleteSound.volume = 0.7;
-          levelCompleteSound.play().catch(function () {});
-        }
+        playSfx('levelComplete', levelCompleteSound, 0.7);
         return;
       }
       if (!correct && state.lives <= 0) {
@@ -536,6 +678,7 @@
 
   function playRocketSound() {
     if (!rocketSound || !rocketSound.play) return;
+    if (rocketSound.error || !(isFinite(rocketSound.duration) && rocketSound.duration > 0)) return;
     unlockAudio();
     var audio = rocketSound;
     var token = ++rocketSoundToken;
@@ -569,16 +712,8 @@
   }
 
   function playRocketLaunchSound() {
-    var audio = rocketLaunchSound;
-    if (!audio || !audio.play) return;
     stopRocketSound();
-    unlockAudio();
-    audio.currentTime = 0;
-    audio.volume = 0.8;
-    audio.play().catch(function () {
-      audio.currentTime = 0;
-      audio.play().catch(function () {});
-    });
+    playSfx('rocketLaunch', rocketLaunchSound, 0.8);
   }
 
   function runIntro() {
@@ -618,13 +753,9 @@
     var stepIndex = 0;
     countdownNumber.textContent = steps[0];
     countdownNumber.classList.remove('countdown-go');
+    fadeOutStartSoundtrack(null, 700);
     playRocketSound();
-    if (countdownSound && countdownSound.play) {
-      unlockAudio();
-      countdownSound.currentTime = 0;
-      countdownSound.volume = 0.6;
-      countdownSound.play().catch(function () {});
-    }
+    playSfx('countdown', countdownSound, 0.8);
 
     function showNext() {
       stepIndex += 1;
@@ -645,9 +776,11 @@
         if (blastOffScene) {
           blastOffScene.classList.remove('hidden');
           var durationSec = 3.5;
-          var audio = rocketLaunchSound;
-          if (audio && isFinite(audio.duration) && audio.duration > 0) {
-            durationSec = audio.duration;
+          var launchBuffer = sfxBuffers.rocketLaunch;
+          if (launchBuffer && launchBuffer.duration > 0) {
+            durationSec = launchBuffer.duration;
+          } else if (rocketLaunchSound && isFinite(rocketLaunchSound.duration) && rocketLaunchSound.duration > 0) {
+            durationSec = rocketLaunchSound.duration;
           }
           if (blastOffRocket) blastOffRocket.style.animationDuration = durationSec + 's';
           blastOffScene.classList.add('blast-off-active');
@@ -678,7 +811,7 @@
     state.score = 0;
     state.lastProblem = null;
     updatePlanetColors();
-    updateShipPosition();
+    scheduleShipPosition();
     updateLives();
     updateLevelDisplay();
     updateScoreDisplay();
@@ -696,7 +829,7 @@
     state.lastProblem = null;
     levelCompleteOverlay.classList.add('hidden');
     updatePlanetColors();
-    updateShipPosition();
+    scheduleShipPosition();
     updateLives();
     updateLevelDisplay();
     state.phase = 'playing';
@@ -723,15 +856,17 @@
     keypadEl.addEventListener('click', function (e) {
       var btn = e.target.closest('.keypad-btn');
       if (!btn) return;
-      playKeypadClick();
       onFirstInteraction();
+      if (btn === btnSubmit) {
+        submitAnswer();
+        return;
+      }
+      playKeypadClick();
       if (btn.classList.contains('num')) {
         var d = btn.getAttribute('data-digit');
         if (d != null) addDigit(parseInt(d, 10));
       } else if (btn === btnDelete) {
         deleteDigit();
-      } else if (btn === btnSubmit) {
-        submitAnswer();
       }
     });
   }
@@ -758,10 +893,11 @@
 
   function playStartSoundtrack() {
     if (!startSoundtrackDesired || !startSoundtrack || !startSoundtrack.play) return;
-    if (!startSoundtrack.paused && !startSoundtrack.ended) return;
     startSoundtrack.loop = true;
     startSoundtrack.muted = false;
     startSoundtrack.volume = 0.6;
+    if (!startSoundtrack.paused && !startSoundtrack.ended) return;
+    try { startSoundtrack.currentTime = 0; } catch (err) {}
     var playPromise = startSoundtrack.play();
     if (playPromise && playPromise.catch) playPromise.catch(function () {});
   }
@@ -799,28 +935,71 @@
     gameTitle.classList.remove('fade-out');
   }
 
-  introOverlay.addEventListener('click', function startGame() {
-    if (clickToStart && clickToStart.classList.contains('hidden')) return;
-    if (clickToStart) clickToStart.classList.add('hidden');
-    playStartSoundtrack();
+  var startPhase = 'load';
+  var titleReadyAt = 0;
+
+  function loadGameFromTap() {
+    if (startPhase !== 'load') return;
+    startPhase = 'title';
+    titleReadyAt = Date.now() + 300;
     unlockAudio();
+    startSoundtrackDesired = true;
+    playStartSoundtrack();
+    if (loadGameOverlay) loadGameOverlay.classList.add('hidden');
+  }
+
+  function startGameFromTitle() {
+    if (startPhase !== 'title') return;
+    if (Date.now() < titleReadyAt) return;
+    if (clickToStart && clickToStart.classList.contains('hidden')) return;
+    startPhase = 'starting';
+    if (clickToStart) clickToStart.classList.add('hidden');
+    unlockAudio();
+    fadeOutStartSoundtrack(null);
     if (gameTitle) gameTitle.classList.add('fade-out');
     setTimeout(function () {
       runIntro();
-      fadeOutStartSoundtrack(null, 2800);
     }, 500);
-  });
+  }
 
-  updateShipPosition();
+  function handleIntroStart(e) {
+    if (e && e.pointerType === 'mouse' && e.button !== 0) return;
+    if (startPhase === 'load') {
+      loadGameFromTap();
+      return;
+    }
+    startGameFromTitle();
+  }
+
+  introOverlay.addEventListener('pointerdown', handleIntroStart);
+  introOverlay.addEventListener('touchend', function (e) {
+    if (startPhase === 'starting') return;
+    e.preventDefault();
+    handleIntroStart(e);
+  }, { passive: false });
+  introOverlay.addEventListener('click', handleIntroStart);
+
   updatePlanetColors();
   updateLevelDisplay();
   updateScoreDisplay();
   restoreGameTitle();
+  if (loadGameOverlay) loadGameOverlay.classList.remove('hidden');
   if (clickToStart) clickToStart.classList.remove('hidden');
   introOverlay.classList.remove('hidden');
   countdownOverlay.classList.add('hidden');
   if (startSoundtrack) {
     startSoundtrack.loop = true;
     startSoundtrack.volume = 0.6;
+    startSoundtrack.setAttribute('playsinline', '');
+    startSoundtrack.playsInline = true;
+  }
+  prefetchSfx();
+  scheduleShipPosition();
+  window.addEventListener('resize', updateShipPosition);
+  window.addEventListener('orientationchange', function () {
+    setTimeout(updateShipPosition, 150);
+  });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateShipPosition);
   }
 })();

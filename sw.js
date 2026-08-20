@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planet-hopper-v5';
+const CACHE_NAME = 'planet-hopper-v8';
 
 // Keep required offline files small and reliable.
 const REQUIRED_ASSETS = [
@@ -16,11 +16,12 @@ const REQUIRED_ASSETS = [
 // Optional media should not block install if any request fails.
 const OPTIONAL_ASSETS = [
   './sounds/Hero%20Immortal.mp3',
-  './sounds/3%202%201%20go_noise-removal_equalized_lower.wav',
+  './sounds/3%202%201%20go_noise-removal_equalized_lower.mp3',
   './sounds/rocket_launch.wav',
-  './sounds/newthingget.ogg',
-  './sounds/Picked%20Coin%20Echo%202.wav',
-  './sounds/thunk.wav'
+  './sounds/newthingget.mp3',
+  './sounds/Picked%20Coin%20Echo%202.mp3',
+  './sounds/thunk.wav',
+  './sounds/click_sound_6.mp3'
 ];
 
 self.addEventListener('install', (event) => {
