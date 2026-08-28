@@ -1,36 +1,17 @@
-# Handoff — 27 Aug 2026 (packaging for Claude Code)
+# Handoff — 27 Aug 2026 (AGENTS.md gap fill)
 
-Session-only. Standing rules live in `AGENTS.md`. Delete or replace this file after the next agent picks up.
+Session-only. Standing rules live in `AGENTS.md`. Replace this file on the next pick-up.
 
 ## In-flight / uncommitted
 
-Working tree at start of packaging (still uncommitted unless you choose otherwise):
-
-| Path | Why |
-|---|---|
-| `assets/icons/icon-192.png` | 19 Aug: favicon was a 192 file with the rocket only in the top-left quarter and a white L around it. Rebuilt by downscaling `icon-512.png` to 192×192 so the tab icon is the full ship on `#1a1a2e`. |
-| `sw.js` | `CACHE_NAME` `planet-hopper-v8` → `planet-hopper-v9` so installed PWAs fetch the new 192 icon. |
-
-This packaging pass **adds** (also uncommitted):
-
-| Path | Why |
-|---|---|
-| `AGENTS.md` | Single source of truth for agents |
-| `CLAUDE.md` | Claude Code loader: `@AGENTS.md` only |
-| `DESIGN.md` | Visual tokens extracted from CSS (no token change this session; file did not exist) |
-| `.cursorrules` | Thin Cursor shim → `AGENTS.md` |
-| `.cursor/rules/agents.mdc` | Always-apply pointer at `AGENTS.md` |
-| `.cursor/rules/open-game-after-request.mdc` | Path fixed to this repo; still Cursor-only “open the game” extra |
-
-No secrets, no `.env`, no `node_modules`.
+None on `main` after `d3d10f6` (agent docs + full-frame favicon + SW `v9`). This pass only edits standing docs + this file + `.cursor/TRANSFER_PROMPT.md`.
 
 ## Open questions / next steps
 
-1. **Commit?** User asked not to commit this packaging pass. When committing, include the favicon + cache bump together with the agent docs, or ship the icon fix first so GitHub Pages updates.
-2. Confirm the new favicon in a **hard-refreshed** tab and on the Home Screen icon (SW cache). `apple-touch-icon.png` / `icon-512.png` were not regenerated.
-3. `sounds/rocket.mp3` is still missing (optional engine bed). Not a bug.
-4. `#winOverlay` is leftover unused markup. Leave it unless someone asks to delete it.
-5. `package.json` name `math-rocket-game` and HTML title `Astronaut Math Rocket` vs product **Planet Hopper** — cosmetic leftovers, do not “fix” unless asked.
+1. Confirm the new favicon in a **hard-refreshed** tab and on the Home Screen icon (SW cache `planet-hopper-v9`). `apple-touch-icon.png` / `icon-512.png` were not regenerated.
+2. `sounds/rocket.mp3` is still missing (optional engine bed). Not a bug.
+3. `#winOverlay` is leftover unused markup. Leave it unless someone asks to delete it.
+4. `package.json` name `math-rocket-game` and HTML title `Astronaut Math Rocket` vs product **Planet Hopper** — cosmetic leftovers, do not “fix” unless asked.
 
 ## Commands
 
@@ -42,11 +23,11 @@ npm run iphone
 # same-Wi-Fi phone testing; not a real iOS PWA install
 ```
 
-After a Pages deploy, bump was already done to `v9` for the icon. Further asset edits need `v10+`.
+Further cached-asset edits need `CACHE_NAME` `v10+`.
 
 ## Read first (ranked)
 
-1. **`AGENTS.md`** — product, architecture, traps, how to run.
+1. **`AGENTS.md`** — product, architecture, traps, how to run, conventions.
 2. **`game.js`** — state machine, math, audio, intro timeline (the real spec).
 3. **`index.html`** — DOM, overlays, two-tap start, audio tags.
 4. **`styles.css`** — landscape keypad / cockpit; pixel ships.
@@ -55,8 +36,8 @@ After a Pages deploy, bump was already done to `v9` for the icon. Further asset 
 7. **`sounds/README.md`** — which clips are required vs optional.
 8. **`README.md`** — player install URL.
 
-## From recent chats (not standing rules)
+## From this chat (not standing rules)
 
-- Two-tap start (**Tap to load game.** / **Tap to play.**) was **restored on purpose** after autoplay experiments failed on iPhone. Last shipped commit: `6d57737` (Web Audio overlapping SFX + two-tap unlock).
-- Favicon quarter-size bug was fixed in the working tree but **never committed**.
-- Do not copy Cursor agent transcripts or plan files into this repo; they are not git history.
+- Synthesized transfer layout: standing spec in `AGENTS.md`; `CLAUDE.md` is only `@AGENTS.md`; session state in `HANDOFF.md`. Do not flatten that into a fat `CLAUDE.md`.
+- Reusable packaging prompt: `.cursor/TRANSFER_PROMPT.md`.
+- Two-tap start and Web Audio SFX were restored on purpose (`6d57737`).

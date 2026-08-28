@@ -8,11 +8,10 @@ Do not re-derive product or architecture. Decisions below are confirmed from the
 
 ## What this is
 
-Landscape math rocket **progressive web app**. Solve arithmetic (and, on level 5, rounding) to fly a pixel ship from the ground planet to the target planet. 10 correct answers land you; wrong answers drop you a step and cost a life.
+Planet Hopper is a landscape-only math rocket **progressive web app** for kids and families practicing arithmetic (and rounding on level 5) on a phone. Players tap answers on a cockpit keypad to fly a pixel ship ten steps to the next planet; wrong answers drop a step and cost a life. It is meant to be installed as a Home Screen icon from Safari (iPhone) or Chrome (Android), not the App Store, and shared as a link.
 
 Live: **https://ido-mor.github.io/planet-hopper/**  
-Repo: `https://github.com/ido-mor/planet-hopper`  
-Not an App Store / Play Store app. Install via Add to Home Screen from Safari (iPhone) or Chrome (Android).
+Repo: `https://github.com/ido-mor/planet-hopper`
 
 ## Stack
 
@@ -23,9 +22,17 @@ Not an App Store / Play Store app. Install via Add to Home Screen from Safari (i
 | PWA | `manifest.webmanifest` + `sw.js`. Service worker registers only in a **secure context** (HTTPS or localhost). |
 | Audio | Long loop on an `<audio>` element. Short SFX via Web Audio decoded buffers so iOS can overlap them. |
 | Hosting | GitHub Pages. Paths are relative (`./`) on purpose. |
-| Tests | None. No CI. |
+| Tests | None. No CI. No pinned JS/npm versions — there are no runtime dependencies. Python 3 stdlib `http.server` for local serve. |
 
 `package.json` `"name"` is still `math-rocket-game` (legacy). Product name is **Planet Hopper**. HTML `<title>` is still `Astronaut Math Rocket`.
+
+## What's shipped
+
+Working on `main`: full play loop (two-tap audio unlock, intro/launch, infinite levels, game over, Continue), landscape keypad, GitHub Pages PWA, overlapping SFX via Web Audio, full-frame `icon-192.png` with SW cache `planet-hopper-v9`.
+
+Stubbed / absent **on purpose** (do not “fix” unless asked): no test suite or build; `#winOverlay` unused leftover; `sounds/rocket.mp3` optional and missing; legacy `package.json` name and HTML title.
+
+In-flight work, uncommitted files, and TODOs live in **`HANDOFF.md` only** — not here.
 
 ## How to run
 
@@ -142,6 +149,7 @@ None. Single page. No accounts, no router, no backend.
 | `LOCAL_IPHONE_SETUP.md` | Same-Wi-Fi iPhone testing |
 | `DESIGN.md` | Visual tokens (palette, type, motion) |
 | `HANDOFF.md` | **Current session only** — not standing rules |
+| `.cursor/TRANSFER_PROMPT.md` | Reusable packaging prompt for other repos. Not game rules. |
 
 DOM ids that `game.js` owns: `shipContainer`, `explosion`, `targetPlanet`, `groundPlanet`, `mathProblem`, `answerInputDisplay`, `keypad`, `feedbackOverlay` / `feedbackCheck` / `feedbackX`, `gameOverOverlay`, `levelCompleteOverlay`, `winOverlay` (unused), `introOverlay`, `loadGameOverlay`, `clickToStart`, `blastOffScene`, `countdownOverlay`, `astronaut`, `doorLeft` / `doorRight`, `playAgainBtn` / `playAgainBtnWin`, `btnSubmit` / `btnDelete`, audio elements listed in `index.html`.
 
@@ -149,14 +157,27 @@ DOM ids that `game.js` owns: `shipContainer`, `explosion`, `targetPlanet`, `grou
 
 ## Conventions
 
-### Styling
+### Naming
+- JS: camelCase functions and locals; one `state` object; DOM ids camelCase, matching `getElementById` vars in `game.js`.
+- CSS: kebab-case classes; keep existing prefixes (`level-complete-`, `keypad-`, `blast-off-`, `life-rocket-`).
+- Files: keep current names (`game.js`, `sw.js`, sound filenames **with spaces**).
+- `game.js` is an IIFE with `'use strict'` and `var`. Match that style; do not convert to modules / `const`/`let` unless asked.
+
+### Formatting
+No Prettier, ESLint, or EditorConfig. 2-space indent. Match the neighboring file; do not reformat wholesale.
+
+### Styling / motion / content
 See **`DESIGN.md`**. Pixel / Donkey Kong palette, 4px-ish borders, `image-rendering: pixelated`. Ships are CSS boxes + SVG data URIs, not sprite sheets. Prefer editing existing classes over new components.
 
-### Motion
-Keep existing timings unless asked: ship thrust 0.5s, feedback overlay 1.2s, title fade 500ms steps(8), countdown pop 1s, climb/door timeouts in `runIntro()` (500 / 2600 / 3600 ms). Flame flicker is a tiny loop. Do not add large JS animation libraries.
+Keep existing timings unless asked: ship thrust 0.5s, feedback overlay 1.2s, title fade 500ms steps(8), countdown pop 1s, climb/door timeouts in `runIntro()` (500 / 2600 / 3600 ms). Flame flicker is a tiny loop. Do not add animation libraries.
 
-### Content
-Copy is short, 8-bit, present tense. Start strings: `Tap to load game.` / `Tap to play.` Rotate: `Rotate your phone to landscape to play.` Level complete: `Great job! Advance to next planet!`
+Copy is short, 8-bit, present tense. Start: `Tap to load game.` / `Tap to play.` Rotate: `Rotate your phone to landscape to play.` Level complete: `Great job! Advance to next planet!`
+
+### Testing
+None. Verification is play-testing in landscape (desktop, then iPhone / Home Screen). Do not add a test runner unless asked.
+
+### Commits
+Imperative subject, focused on **why**. Match recent history (`Restore two-tap audio unlock…`, `Fix mobile keypad spacing…`). Do not commit unless the user asks.
 
 ### Routing / auth
 N/A. Do not add a router or login.
