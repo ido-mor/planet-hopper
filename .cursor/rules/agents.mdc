@@ -1,0 +1,8 @@
+---
+description: Project source of truth is AGENTS.md
+alwaysApply: true
+---
+
+Follow **AGENTS.md** at the repo root. Do not treat this file, `.cursorrules`, or `HANDOFF.md` as a second architecture spec.
+
+If docs and code disagree, implemented code wins.

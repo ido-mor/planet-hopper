@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planet-hopper-v8';
+const CACHE_NAME = 'planet-hopper-v9';
 
 // Keep required offline files small and reliable.
 const REQUIRED_ASSETS = [

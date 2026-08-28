@@ -1,0 +1,7 @@
+# Cursor shim
+
+Follow **AGENTS.md** as the single source of truth for this repo.
+
+If AGENTS.md and any Cursor rule disagree, AGENTS.md wins — except that **implemented code still wins over all docs**.
+
+Cursor-only extras (for example opening `index.html` after a finished request) live under `.cursor/rules/` and are not duplicated in AGENTS.md.
