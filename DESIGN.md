@@ -37,7 +37,7 @@ Title outline cycles cyan / magenta / yellow / green (`#0ff`, `#f0f`, `#ff0`, `#
 ## Type
 
 - **Title:** `Pixeboy` (`fonts/Pixeboy-z8XGD.ttf`), `clamp(48px, 12vw, 96px)`.
-- **UI / keypad / problem:** `"Press Start 2P", monospace` (Google Fonts). Body 20px; problem 24px (smaller in the iPhone landscape query); answer viewport 26px; keypad `clamp(14px, 4.2vw, 28px)`.
+- **UI / keypad / problem:** `"Press Start 2P", monospace` (self-hosted, `fonts/PressStart2P-latin.woff2`). Body 20px; problem 24px (smaller in the iPhone landscape query); answer viewport 26px; keypad `clamp(14px, 4.2vw, 28px)`.
 - Letter-spacing on GAME OVER and answer digits. User-select disabled.
 
 ## Layout

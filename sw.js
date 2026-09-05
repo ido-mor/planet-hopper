@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planet-hopper-v14';
+const CACHE_NAME = 'planet-hopper-v16';
 
 // Keep required offline files small and reliable.
 const REQUIRED_ASSETS = [
@@ -8,6 +8,7 @@ const REQUIRED_ASSETS = [
   './game.js',
   './manifest.webmanifest',
   './fonts/Pixeboy-z8XGD.ttf',
+  './fonts/PressStart2P-latin.woff2',
   './assets/icons/apple-touch-icon.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',

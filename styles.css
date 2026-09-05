@@ -6,6 +6,21 @@
   font-style: normal;
 }
 
+/* Self-hosted so the installed PWA has its UI font offline. It used to come
+   from fonts.googleapis.com, which sw.js cannot cache (the fetch handler skips
+   anything that is not response.type 'basic', and both the Google CSS and the
+   gstatic woff2 are 'cors'), so the whole cockpit fell back to system monospace
+   with no network. Latin subset, 4.7 KB — covers every glyph the game renders,
+   including the division sign and the answer-viewport ellipsis.
+   Press Start 2P is SIL OFL 1.1; see fonts/PressStart2P-OFL.txt. */
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('fonts/PressStart2P-latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {
@@ -1031,6 +1046,24 @@ body {
   100%   { left: calc(var(--gantry-left) + var(--gantry-w) * 1.04); bottom: 45.4%; opacity: 0; }
 }
 
+/* Skip affordance during the launch sequence. Top-right is the one corner that
+   stays empty throughout: the title has faded, the astronaut walks in along the
+   bottom-left, the rocket stands right-of-centre and the countdown is centred. */
+.intro-skip {
+  position: absolute;
+  right: 3%;
+  top: 5%;
+  z-index: 5;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: #8f8;
+  opacity: 0.75;
+  padding: 10px 12px;
+  pointer-events: none;
+  text-shadow: 2px 2px 0 #0f0f1a;
+  animation: clickPulse 1.5s ease-in-out infinite;
+}
+
 .countdown-overlay {
   position: absolute;
   inset: 0;
@@ -1300,6 +1333,11 @@ body {
 
   .countdown-overlay {
     padding-left: 16%;
+  }
+
+  .intro-skip {
+    font-size: 9px;
+    padding: 8px 10px;
   }
 }
 

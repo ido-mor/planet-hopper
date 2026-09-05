@@ -65,6 +65,7 @@
   var keypadClickSound = document.getElementById('keypadClickSound');
   var clickToStart = document.getElementById('clickToStart');
   var loadGameOverlay = document.getElementById('loadGameOverlay');
+  var introSkip = document.getElementById('introSkip');
   var gameTitle = document.getElementById('gameTitle');
   var levelDisplayEl = document.getElementById('levelDisplay');
   var scoreDisplayEl = document.getElementById('scoreDisplay');
@@ -215,7 +216,7 @@
       src.connect(gain);
       gain.connect(ctx.destination);
       src.start(0);
-      return true;
+      return src;
     } catch (err) {
       return false;
     }
@@ -243,12 +244,45 @@
     });
   }
 
-  function playSfx(name, htmlEl, volume) {
+  // ---- Intro sequence state ----
+  // Every intro timer is registered so a skip can cancel the pending chain in
+  // one go; bumping the token also neutralises async work already in flight
+  // (an SFX buffer that finishes decoding after the skip). The countdown voice
+  // and the launch roar outlive a skip too, so those clips are tracked and
+  // stopped when the sequence is cut short.
+  var introTimers = [];
+  var introToken = 0;
+  var introSkipReadyAt = 0;
+  var introSfxNodes = [];
+
+  function trackIntroSfx(node) {
+    if (node && node.stop) introSfxNodes.push(node);
+  }
+
+  function stopIntroSfx() {
+    introSfxNodes.forEach(function (node) {
+      try { node.stop(0); } catch (err) {}
+    });
+    introSfxNodes = [];
+  }
+
+  function playSfx(name, htmlEl, volume, isIntroClip) {
     unlockAudio();
     var vol = volume == null ? 0.7 : volume;
-    if (playBuffer(sfxBuffers[name], vol)) return;
+    var gen = introToken;
+    var node = playBuffer(sfxBuffers[name], vol);
+    if (node) {
+      if (isIntroClip) trackIntroSfx(node);
+      return;
+    }
     getSfxBuffer(name).then(function (buffer) {
-      if (playBuffer(buffer, vol)) return;
+      // A buffer that finishes decoding after the skip must not start.
+      if (isIntroClip && gen !== introToken) return;
+      var late = playBuffer(buffer, vol);
+      if (late) {
+        if (isIntroClip) trackIntroSfx(late);
+        return;
+      }
       if (!isLikelyIOS()) playHtmlSound(htmlEl, vol);
     });
   }
@@ -710,7 +744,7 @@
 
   function playRocketLaunchSound() {
     stopRocketSound();
-    playSfx('rocketLaunch', rocketLaunchSound, 0.8);
+    playSfx('rocketLaunch', rocketLaunchSound, 0.8, true);
   }
 
   // Astronaut needs to cross the gantry before the countdown starts; this
@@ -725,23 +759,73 @@
     if (astronaut) astronaut.classList.remove('is-walking');
   }
 
-  function runIntro() {
+  function introTimeout(fn, ms) {
+    var gen = introToken;
+    var id = setTimeout(function () {
+      if (gen !== introToken) return;
+      fn();
+    }, ms);
+    introTimers.push(id);
+    return id;
+  }
+
+  function cancelIntroTimers() {
+    introToken += 1;
+    introTimers.forEach(clearTimeout);
+    introTimers = [];
+  }
+
+  // options.skipWalk jumps straight to the countdown. Play Again uses it: the
+  // boarding walk is worth watching once, not after every game over.
+  function runIntro(options) {
+    var skipWalk = !!(options && options.skipWalk);
+    cancelIntroTimers();
     state.phase = 'intro';
     introOverlay.classList.remove('hidden');
     countdownOverlay.classList.add('hidden');
     if (introStage) introStage.classList.remove('hidden');
     resetIntroStage();
 
-    setTimeout(function () {
-      // Restart the walk cleanly even on a replay.
-      void astronaut.offsetWidth;
-      astronaut.classList.add('is-walking');
-    }, 500);
+    // A skip is only armed once the sequence is under way, so a quick second
+    // tap on "Tap to play." cannot blow straight past the whole intro.
+    introSkipReadyAt = Date.now() + 900;
+    if (introSkip) introSkip.classList.add('hidden');
+    introTimeout(function () {
+      if (introSkip) introSkip.classList.remove('hidden');
+    }, 900);
 
-    setTimeout(function () {
+    if (!skipWalk) {
+      introTimeout(function () {
+        // Restart the walk cleanly even on a replay.
+        void astronaut.offsetWidth;
+        astronaut.classList.add('is-walking');
+      }, 500);
+    }
+
+    introTimeout(function () {
       countdownOverlay.classList.remove('hidden');
       runCountdown();
-    }, 500 + ASTRONAUT_WALK_MS);
+    }, skipWalk ? 400 : 500 + ASTRONAUT_WALK_MS);
+  }
+
+  // The one exit from the intro, shared by the natural end and tap-to-skip.
+  function finishIntro() {
+    cancelIntroTimers();
+    stopIntroSfx();
+    stopRocketSound();
+    countdownOverlay.classList.add('hidden');
+    introOverlay.classList.add('hidden');
+    if (introSkip) introSkip.classList.add('hidden');
+    resetIntroStage();
+    startLevel();
+  }
+
+  function skipIntro() {
+    if (state.phase !== 'intro' && state.phase !== 'countdown') return;
+    if (Date.now() < introSkipReadyAt) return;
+    // Cuts the loop short when skipping before the countdown has faded it.
+    fadeOutStartSoundtrack(null, 200);
+    finishIntro();
   }
 
   function launchDurationSec() {
@@ -760,7 +844,7 @@
     countdownNumber.dataset.step = steps[0];
     fadeOutStartSoundtrack(null, 700);
     playRocketSound();
-    playSfx('countdown', countdownSound, 0.8);
+    playSfx('countdown', countdownSound, 0.8, true);
 
     function showNext() {
       stepIndex += 1;
@@ -772,7 +856,7 @@
       countdownNumber.style.animation = 'countdownPop 1s ease-out';
 
       if (steps[stepIndex] !== 'go') {
-        setTimeout(showNext, 1000);
+        introTimeout(showNext, 1000);
         return;
       }
 
@@ -786,16 +870,12 @@
         introRocket.classList.add('is-launching');
       }
       playRocketLaunchSound();
-      setTimeout(function () {
+      introTimeout(function () {
         countdownOverlay.classList.add('hidden');
       }, 900);
-      setTimeout(function () {
-        introOverlay.classList.add('hidden');
-        resetIntroStage();
-        startLevel();
-      }, durationSec * 1000);
+      introTimeout(finishIntro, durationSec * 1000);
     }
-    setTimeout(showNext, 1000);
+    introTimeout(showNext, 1000);
   }
 
   function startLevel() {
@@ -839,7 +919,7 @@
     gameOverOverlay.classList.add('hidden');
     winOverlay.classList.add('hidden');
     levelCompleteOverlay.classList.add('hidden');
-    runIntro();
+    runIntro({ skipWalk: true });
   }
 
   function onFirstInteraction() {
@@ -983,12 +1063,16 @@
       loadGameFromTap();
       return;
     }
+    if (startPhase === 'starting') {
+      // Sequence is already running: a tap cuts to the board.
+      skipIntro();
+      return;
+    }
     startGameFromTitle();
   }
 
   introOverlay.addEventListener('pointerdown', handleIntroStart);
   introOverlay.addEventListener('touchend', function (e) {
-    if (startPhase === 'starting') return;
     e.preventDefault();
     handleIntroStart(e);
   }, { passive: false });

@@ -18,7 +18,7 @@ Repo: `https://github.com/ido-mor/planet-hopper`
 | Item | Choice |
 |---|---|
 | Runtime | Static HTML + CSS + vanilla JS (IIFE in `game.js`). No framework, bundler, TypeScript, or npm dependencies. |
-| Fonts | Local `fonts/Pixeboy-z8XGD.ttf` (title). Google Fonts **Press Start 2P** (UI). |
+| Fonts | Both self-hosted: `fonts/Pixeboy-z8XGD.ttf` (title), `fonts/PressStart2P-latin.woff2` (UI, SIL OFL 1.1, licence in `fonts/PressStart2P-OFL.txt`). No third-party font requests — the service worker cannot cache cross-origin responses, so a Google-hosted UI font left the installed app in fallback monospace offline. |
 | PWA | `manifest.webmanifest` + `sw.js`. Service worker registers only in a **secure context** (HTTPS or localhost). |
 | Audio | Long loop on an `<audio>` element. Short SFX via Web Audio decoded buffers so iOS can overlap them. |
 | Hosting | GitHub Pages. Paths are relative (`./`) on purpose. |
