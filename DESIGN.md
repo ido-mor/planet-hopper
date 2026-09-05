@@ -63,7 +63,7 @@ Title outline cycles cyan / magenta / yellow / green (`#0ff`, `#f0f`, `#ff0`, `#
 | `climbLadder` | astronaut intro |
 | `rocketBlastOff` | duration set in JS from launch SFX length (fallback 3.5s) |
 | `countdownPop` | 1s per numeral |
-| `astronautDanceFrames` | level-complete astronaut, 10 poses over 0.9s |
+| `astronautDanceFrames` | level-complete astronaut, 10 poses over 1.8s |
 | `flash` | GAME OVER text |
 
 Key press: `transform: scale(0.96)` 0.06s. No extra animation libraries.

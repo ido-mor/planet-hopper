@@ -23,7 +23,7 @@ to the gameplay screens. Audio, the two-tap unlock, and the 3-2-1 pacing against
   the ignition beat: the flame lights and the rocket climbs on that step.
 - **Gameplay art** swapped to the same sprites: map ship, life pips,
   level-complete rocket, dancing astronaut.
-- `sw.js` `CACHE_NAME` bumped to `planet-hopper-v12` with the sprites added to
+- `sw.js` `CACHE_NAME` bumped to `planet-hopper-v13` with the sprites added to
   `REQUIRED_ASSETS`.
 
 ## Verified

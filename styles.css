@@ -602,6 +602,11 @@ body {
   /* Height of the planet's horizon above the bottom of the scene. The disk and
      the surface the sprites stand on are both positioned from this. */
   --horizon: 44px;
+  /* How far the sprites sit below the horizon line so they read as standing on
+     the planet rather than balanced on it. --horizon lands them exactly on the
+     disk's border box; the 4px border plus the curve falling away either side
+     of the apex leaves a visible sliver of sky under their feet without this. */
+  --sink: 8px;
   position: relative;
   width: 100%;
   flex: 1;
@@ -673,7 +678,7 @@ body {
   /* Stand the rocket and astronaut on the horizon itself. This used to be a
      percentage, which resolves against the scene *width*, so the sprites
      floated well above the planet on wide viewports. */
-  padding-bottom: var(--horizon);
+  padding-bottom: calc(var(--horizon) - var(--sink));
   overflow: visible;
 }
 
@@ -698,7 +703,7 @@ body {
   background-size: calc(44px * 10) 100%;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  animation: astronautDanceFrames 0.9s steps(10, end) infinite;
+  animation: astronautDanceFrames 1.8s steps(10, end) infinite;
 }
 
 @keyframes astronautDanceFrames {
@@ -1243,7 +1248,7 @@ body {
     width: 36px;
     height: 54px;
     background-size: calc(36px * 10) 100%;
-    animation: astronautDanceFramesSm 0.9s steps(10, end) infinite;
+    animation: astronautDanceFramesSm 1.8s steps(10, end) infinite;
   }
 
   @keyframes astronautDanceFramesSm {
