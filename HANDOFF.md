@@ -1,8 +1,8 @@
 # Handoff — current session
 
 Scope: mobile audit, then the three highest-value fixes from it — first-load
-payload, time-to-play, and the UI font offline. Layout, math, the two-tap
-unlock and the visual design are untouched.
+payload, time-to-play, and the UI font offline — followed by a new app icon.
+Layout, math and the two-tap unlock are untouched.
 
 ## What changed
 
@@ -44,6 +44,30 @@ unlock and the visual design are untouched.
   font is self-hosted, per the conflict rule in `AGENTS.md`.
 - `sw.js` `CACHE_NAME` -> `planet-hopper-v16`.
 
+## App icon
+
+Swapped from the pixel rocket to the owner's front-view astronaut
+(`~/Documents/Projects/Planet Hopper Assets/astronaut front view.png`), built
+by the new `tools/make-icons.py`.
+
+- The source is soft-edged — only 2,702 of ~1.5M pixels are fully opaque — so a
+  plain resize turns it to mush. The script finds its logical grid (exactly
+  29x50 blocks of 28px) and resamples by block centre with a hard alpha
+  threshold, which recovers true pixel-art edges.
+- **Split `any` and `maskable`.** The manifest previously declared
+  `icon-192`/`icon-512` as `"any maskable"`, one file for both. The astronaut is
+  a wider subject than the rocket, and at the framing that matches the old icon
+  (78% height) Android's circular mask clips 665 px off the helmet and boots.
+  The largest single file that survives the crop sits at 68%, which reads small
+  on a Home Screen. So: `any` at 78% (what iOS uses — it masks to a rounded
+  rect, not a circle) plus a new `icon-512-maskable.png` at 68%, verified 0 px
+  outside the safe circle. `make-icons.py` refuses to write if that check fails.
+- 180 and 192 remain full-frame downscales of the 512, per the existing rule.
+  No ring; flat `#1a1a2e`.
+- `CACHE_NAME` -> `planet-hopper-v17`; the maskable file added to
+  `REQUIRED_ASSETS`. `AGENTS.md` and `DESIGN.md` both described the icon as a
+  rocket and were updated.
+
 ## Verified
 
 Driven in-browser at 667x375, plus 568x320 / 844x390 for the skip hint:
@@ -64,9 +88,14 @@ Driven in-browser at 667x375, plus 568x320 / 844x390 for the skip hint:
   Glyph coverage verified against every character the game renders — including
   `÷` for level 10+ and the `…` answer placeholder — nothing missing.
   Rendering is pixel-identical to the Google-hosted version.
-- Precache integrity: replayed the install step in page scope. All 19
-  `REQUIRED_ASSETS` return 200 and `cache.addAll` resolves with the font
-  included, so a bad path cannot silently break offline install.
+- Precache integrity: replayed the install step in page scope. All 20
+  `REQUIRED_ASSETS` return 200 and `cache.addAll` resolves with the font and
+  the maskable icon included, so a bad path cannot silently break offline
+  install.
+- Icons: manifest parses with four entries and correct purposes, every file
+  returns 200, and the `<link rel=icon>` / `<link rel=apple-touch-icon>` targets
+  resolve. Geometry measured from the pixels: `any` 78% subject height (the
+  rocket it replaced was 76%), maskable 68% with 0 px outside the safe circle.
 
 ## Known, not addressed
 

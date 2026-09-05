@@ -70,7 +70,8 @@ Key press: `transform: scale(0.96)` 0.06s. No extra animation libraries.
 
 ## Icons
 
-- Home Screen / favicon: pixel rocket (red nose, white body, blue window, red fins, blue base) on `#1a1a2e`. **No ring.** `icon-192.png` must fill the 192×192 frame (downscale of `icon-512.png`), not a quarter-sized sprite with a white L around it.
+- Home Screen / favicon: the front-view pixel astronaut (white suit, dark visor, red chest crosses) on flat `#1a1a2e`. **No ring.** `icon-192.png` must fill the 192×192 frame (downscale of `icon-512.png`), not a quarter-sized sprite with a white L around it.
+- Two renders: `purpose: "any"` at 78% subject height, and `icon-512-maskable.png` at 68% so nothing is clipped by Android's circular mask. Built by `tools/make-icons.py`.
 - Manifest `background_color` / `theme_color`: `#1a1a2e`.
 
 ## Pixel sprites
