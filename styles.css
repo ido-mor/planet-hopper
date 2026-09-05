@@ -587,6 +587,7 @@ body {
 .level-complete-overlay {
   padding: 22px;
   gap: 18px;
+  overflow: hidden;
 }
 
 .level-complete-text {
@@ -611,7 +612,6 @@ body {
   width: 100%;
   flex: 1;
   min-height: 180px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -624,7 +624,11 @@ body {
   left: 0;
   right: 0;
   height: 100%;
-  overflow: hidden;
+  /* Not overflow: hidden. The disk still has to be clipped to the scene's
+     width, but its body must spill *below* the scene so the surface runs
+     unbroken to the bottom of the screen behind the Continue button. The
+     overlay clips whatever hangs past the screen. */
+  clip-path: inset(0 0 -200vh 0);
 }
 
 .level-complete-planet {
@@ -709,6 +713,13 @@ body {
 @keyframes astronautDanceFrames {
   from { background-position-x: 0; }
   to   { background-position-x: calc(44px * -10); }
+}
+
+/* The planet now fills the space behind this button, so lift it out of the
+   static paint layer or the disk covers it. */
+.level-complete-overlay .continue-btn {
+  position: relative;
+  z-index: 3;
 }
 
 .continue-btn,
