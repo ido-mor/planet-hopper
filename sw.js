@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planet-hopper-v10';
+const CACHE_NAME = 'planet-hopper-v12';
 
 // Keep required offline files small and reliable.
 const REQUIRED_ASSETS = [
@@ -17,6 +17,7 @@ const REQUIRED_ASSETS = [
   './assets/sprites/life-rocket.png',
   './assets/sprites/life-rocket-empty.png',
   './assets/sprites/astronaut-walk.png',
+  './assets/sprites/astronaut-dance.png',
   './assets/sprites/countdown.png',
   './assets/sprites/gantry.png'
 ];

@@ -63,7 +63,7 @@ Title outline cycles cyan / magenta / yellow / green (`#0ff`, `#f0f`, `#ff0`, `#
 | `climbLadder` | astronaut intro |
 | `rocketBlastOff` | duration set in JS from launch SFX length (fallback 3.5s) |
 | `countdownPop` | 1s per numeral |
-| `danceAnim` | level-complete astronaut |
+| `astronautDanceFrames` | level-complete astronaut, 10 poses over 0.9s |
 | `flash` | GAME OVER text |
 
 Key press: `transform: scale(0.96)` 0.06s. No extra animation libraries.
@@ -82,6 +82,7 @@ Nothing is anti-aliased and nothing is hand-edited — regenerate instead:
 ```bash
 python3 tools/make-sprites.py
 python3 tools/make-astronaut-sheet.py
+python3 tools/make-dance-sheet.py
 ```
 
 | Sprite | Native size | Notes |
@@ -91,6 +92,7 @@ python3 tools/make-astronaut-sheet.py
 | `rocket-small.png` | 24x30 | Map panel |
 | `life-rocket.png` / `-empty.png` | 12x16 | HUD pips |
 | `astronaut-walk.png` | 816x102 | 12 frames of 68x102 |
+| `astronaut-dance.png` | 320x48 | 10 front-view dance poses of 32x48 |
 | `countdown.png` | 224x26 | 4 cells of 56x26: 3 / 2 / 1 / GO! |
 | `gantry.png` | 120x82 | Stepped ramp, platform, support tower |
 

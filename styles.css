@@ -85,6 +85,26 @@ body {
   z-index: 1;
 }
 
+/* Shading overlay lives on a pseudo-element because game.js writes the planet
+   colour straight onto style.background and would wipe a background-image.
+   Hard gradient stops keep the terminator banded rather than airbrushed. */
+.target-planet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 34% 30%,
+      rgba(255, 255, 255, 0.42) 0 20%,
+      rgba(255, 255, 255, 0.18) 20% 38%,
+      rgba(255, 255, 255, 0) 38%),
+    radial-gradient(circle at 62% 68%,
+      rgba(0, 0, 0, 0) 0 26%,
+      rgba(0, 0, 0, 0.16) 26% 46%,
+      rgba(0, 0, 0, 0.34) 46%);
+}
+
 .path-steps {
   flex: 1;
   display: flex;
@@ -111,6 +131,23 @@ body {
   border-radius: 4px;
   background: #4a5a3a;
   margin-top: 4px;
+  position: relative;
+}
+
+/* Same treatment for the ground band, which becomes the previous planet from
+   level 2 on (game.js switches its border-radius to 50%). */
+.ground.previous-planet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.28) 0 20%,
+    rgba(255, 255, 255, 0.10) 20% 38%,
+    rgba(0, 0, 0, 0) 38% 68%,
+    rgba(0, 0, 0, 0.22) 68%);
 }
 
 /* ---- Pixel spaceship 50% larger (red nose, white body, window, 3 fins, blue base) ---- */
@@ -562,6 +599,9 @@ body {
 }
 
 .level-complete-scene {
+  /* Height of the planet's horizon above the bottom of the scene. The disk and
+     the surface the sprites stand on are both positioned from this. */
+  --horizon: 44px;
   position: relative;
   width: 100%;
   flex: 1;
@@ -588,13 +628,38 @@ body {
   transform: translateX(-50%);
   width: 300%;
   max-width: none;
-  height: 300%;
-  min-height: 600px;
-  bottom: -280%;
+  aspect-ratio: 1 / 1;
+  /* Positioned by its top edge, so the apex of the curve always lands exactly
+     --horizon above the bottom no matter how short the scene gets. */
+  top: calc(100% - var(--horizon));
+  bottom: auto;
   border: 4px solid #1a1a2e;
   border-radius: 50%;
   background: #e8c040;
   image-rendering: pixelated;
+}
+
+/* Roundness: a lit rim along the horizon falling off into shadow, plus a
+   left-to-right term so the limb darkens away from the light. Pixel offsets
+   (not percentages) because only the top sliver of the disk is ever visible. */
+.level-complete-planet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to bottom,
+      rgba(255, 255, 255, 0.24) 0 5px,
+      rgba(255, 255, 255, 0.11) 5px 15px,
+      rgba(0, 0, 0, 0) 16px 34px,
+      rgba(0, 0, 0, 0.16) 34px 70px,
+      rgba(0, 0, 0, 0.28) 70px),
+    linear-gradient(to right,
+      rgba(255, 255, 255, 0.16) 42%,
+      rgba(255, 255, 255, 0.04) 47%,
+      rgba(0, 0, 0, 0.08) 53%,
+      rgba(0, 0, 0, 0.26) 58%);
 }
 
 .level-complete-surface {
@@ -605,8 +670,10 @@ body {
   justify-content: center;
   gap: 24px;
   min-height: 100px;
-  /* Planet disk top sits at ~20% of scene height from the bottom */
-  padding-bottom: 20%;
+  /* Stand the rocket and astronaut on the horizon itself. This used to be a
+     percentage, which resolves against the scene *width*, so the sprites
+     floated well above the planet on wide viewports. */
+  padding-bottom: var(--horizon);
   overflow: visible;
 }
 
@@ -621,38 +688,22 @@ body {
   image-rendering: crisp-edges;
 }
 
-/* Astronaut celebrating: the walk cycle played fast, with a bob on top */
+/* Astronaut celebrating: the front-view dance loop, ten poses. No transform
+   bob on top - the movement is in the frames themselves. */
 .astronaut-dancing {
   width: 44px;
   height: 66px;
   flex-shrink: 0;
-  background: url("assets/sprites/astronaut-walk.png") no-repeat 0 0;
-  background-size: calc(44px * 12) 100%;
+  background: url("assets/sprites/astronaut-dance.png") no-repeat 0 0;
+  background-size: calc(44px * 10) 100%;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  animation:
-    astronautDanceFrames 0.72s steps(12, end) infinite,
-    danceAnim 0.35s ease-in-out infinite;
+  animation: astronautDanceFrames 0.9s steps(10, end) infinite;
 }
 
 @keyframes astronautDanceFrames {
   from { background-position-x: 0; }
-  to   { background-position-x: calc(44px * -12); }
-}
-
-@keyframes danceAnim {
-  0%, 100% {
-    transform: translateY(0) rotate(-8deg) scaleX(1);
-  }
-  25% {
-    transform: translateY(-4px) rotate(0deg) scaleX(1.05);
-  }
-  50% {
-    transform: translateY(-6px) rotate(8deg) scaleX(0.95);
-  }
-  75% {
-    transform: translateY(-3px) rotate(0deg) scaleX(1.02);
-  }
+  to   { background-position-x: calc(44px * -10); }
 }
 
 .continue-btn,
@@ -815,6 +866,11 @@ body {
   --gantry-w: calc(var(--gantry-h) * 120 / 82);
   --astro-h: calc(var(--rocket-h) * 0.30);
   --astro-w: calc(var(--astro-h) * 68 / 102);
+  /* Stage anchors. The astronaut is a sibling of the gantry now (it walks in
+     from off-screen left), so it needs the gantry's edges in stage coords. */
+  --rocket-right: 15%;
+  --gantry-right: calc(var(--rocket-right) + var(--rocket-w) * 0.70);
+  --gantry-left: calc(100% - var(--gantry-right) - var(--gantry-w));
 }
 
 /* Sparse static starfield behind the stage */
@@ -849,6 +905,22 @@ body {
   pointer-events: none;
 }
 
+/* Ground line: runs edge to edge so the astronaut has somewhere to walk in
+   from. Its top edge is the stage baseline the rocket's fin tips rest on. */
+.intro-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 6px;
+  background-image: linear-gradient(
+    to bottom,
+    #96a4b4 0, #96a4b4 2px,
+    #5c6a7d 2px, #5c6a7d 4px,
+    #343c52 4px, #343c52 6px
+  );
+}
+
 .intro-rocket,
 .intro-gantry,
 .intro-astronaut {
@@ -860,7 +932,7 @@ body {
 
 /* Rocket sits on its fin tips on the stage baseline */
 .intro-rocket {
-  right: 15%;
+  right: var(--rocket-right);
   bottom: 0;
   width: var(--rocket-w);
   height: var(--rocket-h);
@@ -898,7 +970,7 @@ body {
 /* Gantry: its right edge tucks just inside the hull so the top platform lands
    at the hatch. Stays standing after the rocket leaves. */
 .intro-gantry {
-  right: calc(15% + var(--rocket-w) * 0.70);
+  right: var(--gantry-right);
   bottom: 0;
   width: var(--gantry-w);
   height: var(--gantry-h);
@@ -909,8 +981,8 @@ body {
 /* Astronaut: 12-frame walk cycle. Sized in px units rather than percentages so
    each step lands exactly on a frame boundary. */
 .intro-astronaut {
-  left: 0;
-  bottom: 7%;
+  left: calc(var(--astro-w) * -1);
+  bottom: 0;
   width: var(--astro-w);
   height: var(--astro-h);
   background-image: url("assets/sprites/astronaut-walk.png");
@@ -923,7 +995,7 @@ body {
   opacity: 1;
   animation:
     astronautStride 0.72s steps(12, end) infinite,
-    astronautBoard 4.2s linear forwards;
+    astronautBoard 7.4s linear forwards;
 }
 
 @keyframes astronautStride {
@@ -931,14 +1003,16 @@ body {
   to   { background-position-x: calc(var(--astro-w) * -12); }
 }
 
-/* Up the stairs, across the platform, then in through the side of the hull.
-   The walk stops while still inside the hull silhouette and then cuts out, so
-   the astronaut is not left standing on the gantry once the rocket lifts off. */
+/* On from the left edge along the ground (0 - 43%), up the stairs, across the
+   platform, then in through the side of the hull. The walk stops while still
+   inside the hull silhouette and then cuts out, so the astronaut is not left
+   standing on the gantry once the rocket lifts off. */
 @keyframes astronautBoard {
-  0%   { left: -6%;  bottom: 5%;  opacity: 1; }
-  76%  { left: 74%;  bottom: 78%; opacity: 1; }
-  94%  { left: 104%; bottom: 78%; opacity: 1; }
-  100% { left: 104%; bottom: 78%; opacity: 0; }
+  0%     { left: calc(var(--astro-w) * -1);                      bottom: 0;      opacity: 1; }
+  43.2%  { left: calc(var(--gantry-left) - var(--gantry-w) * 0.06); bottom: 0;   opacity: 1; }
+  86.4%  { left: calc(var(--gantry-left) + var(--gantry-w) * 0.74); bottom: 45.4%; opacity: 1; }
+  96.6%  { left: calc(var(--gantry-left) + var(--gantry-w) * 1.04); bottom: 45.4%; opacity: 1; }
+  100%   { left: calc(var(--gantry-left) + var(--gantry-w) * 1.04); bottom: 45.4%; opacity: 0; }
 }
 
 .countdown-overlay {
@@ -1066,10 +1140,8 @@ body {
   }
 
   .pixel-ship {
-    width: 48px;
-    height: 60px;
-    transform: scale(0.82);
-    transform-origin: top center;
+    width: 40px;
+    height: 50px;
   }
 
   .cockpit {
@@ -1158,6 +1230,7 @@ body {
   }
 
   .level-complete-scene {
+    --horizon: 34px;
     min-height: 0;
   }
 
@@ -1169,15 +1242,13 @@ body {
   .astronaut-dancing {
     width: 36px;
     height: 54px;
-    background-size: calc(36px * 12) 100%;
-    animation:
-      astronautDanceFramesSm 0.72s steps(12, end) infinite,
-      danceAnim 0.35s ease-in-out infinite;
+    background-size: calc(36px * 10) 100%;
+    animation: astronautDanceFramesSm 0.9s steps(10, end) infinite;
   }
 
   @keyframes astronautDanceFramesSm {
     from { background-position-x: 0; }
-    to   { background-position-x: calc(36px * -12); }
+    to   { background-position-x: calc(36px * -10); }
   }
 
   .continue-btn,

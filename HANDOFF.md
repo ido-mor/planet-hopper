@@ -23,7 +23,7 @@ to the gameplay screens. Audio, the two-tap unlock, and the 3-2-1 pacing against
   the ignition beat: the flame lights and the rocket climbs on that step.
 - **Gameplay art** swapped to the same sprites: map ship, life pips,
   level-complete rocket, dancing astronaut.
-- `sw.js` `CACHE_NAME` bumped to `planet-hopper-v10` with the sprites added to
+- `sw.js` `CACHE_NAME` bumped to `planet-hopper-v12` with the sprites added to
   `REQUIRED_ASSETS`.
 
 ## Verified
@@ -33,10 +33,35 @@ hull occlusion, 3 / 2 / 1 / GO!, ignition and liftoff with the gantry standing,
 hand-off into gameplay, Play Again replay resetting cleanly, map ship and life
 pips at all three life states, level-complete overlay, portrait rotate guard.
 
+## Second pass
+
+- **Ground line** (`#introGround`) runs edge to edge at the stage baseline. The
+  astronaut now walks on from off-screen left along it before starting the
+  climb, so it is a sibling of `#introGantry` rather than a child and its
+  keyframes are stage-relative (`--gantry-left` / `--gantry-right` carry the
+  gantry's edges across).
+- **Walk beat** `ASTRONAUT_WALK_MS` 4200 -> 7400 (~3.2s ground, 4.2s climb).
+  Nothing else needed re-cueing: the countdown clip is played inside
+  `runCountdown()`, which is still called at `500 + ASTRONAUT_WALK_MS`, so the
+  3 / 2 / 1 / GO! digits stay locked to the audio.
+- **Map planets** are shaded round with a `::after` overlay. It has to be a
+  pseudo-element: `game.js` writes the colour to `style.background` and would
+  wipe a `background-image`. Same treatment on the ground band.
+- **Map ship centring**: the landscape rule sized `.pixel-ship` 48px inside a
+  40px `.ship-container` and scaled it about its own centre, pushing it off the
+  dotted line. It is now sized to the container, no transform.
+- **Level-complete planet**: one `--horizon` variable on `.level-complete-scene`
+  now drives both the disk (positioned by its top edge, `aspect-ratio: 1`) and
+  the surface padding, so the rocket and astronaut stand on the horizon. The old
+  `padding-bottom: 20%` resolved against the scene *width*, which is why they
+  floated. Shading is px-stop gradients, since only the top sliver is visible.
+
+- **Celebration character** is now the supplied front-view dance sheet,
+  converted by `tools/make-dance-sheet.py` into `astronaut-dance.png` (10 poses
+  of 32x48). Colours are snapped to the palette already in `astronaut-walk.png`
+  so it is recognisably the same character as the one who boards the rocket.
+  The old `danceAnim` transform bob is gone - the frames carry the movement.
+
 ## Known, not addressed
 
-- On the level-complete overlay the rocket and astronaut float above the planet
-  band rather than standing on it. This is pre-existing (`.level-complete-surface`
-  has `padding-bottom: 20%` while the planet disk is positioned separately) and
-  was not introduced by the sprite swap — but it is more noticeable now.
 - Not yet play-tested on a real iPhone / Home Screen PWA.

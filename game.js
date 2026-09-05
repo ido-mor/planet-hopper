@@ -715,7 +715,7 @@
 
   // Astronaut needs to cross the gantry before the countdown starts; this
   // matches the walk beat in the reference sequence.
-  var ASTRONAUT_WALK_MS = 4200;
+  var ASTRONAUT_WALK_MS = 7400;
 
   function resetIntroStage() {
     if (introRocket) {
