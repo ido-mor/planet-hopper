@@ -40,11 +40,7 @@
         </div>
         <div class="ground previous-planet" id="groundPlanet"></div>
         <div class="ship-container" id="shipContainer" aria-hidden="true">
-          <div class="ship pixel-ship" id="ship">
-            <span class="ship-window"></span>
-            <span class="ship-fins"></span>
-            <span class="ship-base"></span>
-          </div>
+          <div class="ship pixel-ship" id="ship"></div>
           <div class="engine-flame" id="engineFlame" aria-hidden="true"></div>
         </div>
         <div class="explosion" id="explosion" aria-hidden="true"></div>
@@ -107,11 +103,7 @@
             <div class="level-complete-planet" id="levelCompletePlanet"></div>
           </div>
           <div class="level-complete-surface">
-            <div class="level-complete-rocket">
-            <span class="lc-rocket-window"></span>
-            <span class="lc-rocket-fins"></span>
-            <span class="lc-rocket-base"></span>
-          </div>
+            <div class="level-complete-rocket"></div>
             <div class="astronaut-dancing" id="astronautDancing"></div>
           </div>
         </div>
@@ -125,50 +117,24 @@
       </div>
     </main>
 
-    <!-- Intro overlay: load tap, title, tap to play, full-width ground, scenes, countdown -->
+    <!-- Intro overlay: load tap, title, tap to play, launch stage, countdown -->
     <div class="intro-overlay" id="introOverlay">
       <div class="load-game-overlay" id="loadGameOverlay">
         <p>Tap to load game.</p>
       </div>
+      <div class="intro-starfield" aria-hidden="true"></div>
       <h1 class="game-title" id="gameTitle">Planet Hopper</h1>
       <div class="click-to-start" id="clickToStart" aria-label="Tap to play">Tap to play.</div>
-      <div class="intro-ground" id="introGround" aria-hidden="true"></div>
-      <div class="blast-off-scene hidden" id="blastOffScene">
-        <div class="launch-scaffold" aria-hidden="true">
-          <div class="scaffold-leg scaffold-leg-left"></div>
-          <div class="scaffold-leg scaffold-leg-right"></div>
+      <!-- Launch stage: gantry (astronaut walks up it) then rocket, so the
+           hull paints over the astronaut as they step aboard. -->
+      <div class="intro-stage" id="introStage" aria-hidden="true">
+        <div class="intro-gantry" id="introGantry">
+          <div class="intro-astronaut" id="astronaut"></div>
         </div>
-        <div class="blast-off-rocket" id="blastOffRocket">
-          <div class="blast-nose"></div>
-          <div class="blast-body">
-            <div class="blast-panel"></div>
-          </div>
-          <div class="blast-fins"></div>
-          <div class="intro-engine-flame" id="introEngineFlame"></div>
-        </div>
-      </div>
-      <div class="intro-scene" id="introScene">
-        <div class="spaceship-intro" id="spaceshipIntro">
-          <div class="ship-pixel-intro">
-            <div class="pixel-nose"></div>
-            <div class="pixel-nose-tip"></div>
-            <div class="pixel-body-intro">
-            </div>
-            <div class="pixel-body-stripe"></div>
-            <div class="pixel-fins-intro"></div>
-          </div>
-          <div class="launch-scaffold" aria-hidden="true">
-            <div class="scaffold-leg scaffold-leg-left"></div>
-            <div class="scaffold-leg scaffold-leg-right"></div>
-          </div>
-          <div class="door-left" id="doorLeft"></div>
-          <div class="door-right" id="doorRight"></div>
-          <div class="ladder-intro"></div>
-        </div>
-        <div class="astronaut" id="astronaut"></div>
+        <div class="intro-rocket" id="introRocket"></div>
       </div>
       <div class="countdown-overlay hidden" id="countdownOverlay">
-        <span class="countdown-number" id="countdownNumber">3</span>
+        <span class="countdown-number" id="countdownNumber" data-step="3"></span>
       </div>
     </div>
   </div>

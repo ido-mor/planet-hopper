@@ -1,4 +1,4 @@
-const CACHE_NAME = 'planet-hopper-v9';
+const CACHE_NAME = 'planet-hopper-v10';
 
 // Keep required offline files small and reliable.
 const REQUIRED_ASSETS = [
@@ -10,7 +10,15 @@ const REQUIRED_ASSETS = [
   './fonts/Pixeboy-z8XGD.ttf',
   './assets/icons/apple-touch-icon.png',
   './assets/icons/icon-192.png',
-  './assets/icons/icon-512.png'
+  './assets/icons/icon-512.png',
+  './assets/sprites/rocket-idle.png',
+  './assets/sprites/rocket-fire.png',
+  './assets/sprites/rocket-small.png',
+  './assets/sprites/life-rocket.png',
+  './assets/sprites/life-rocket-empty.png',
+  './assets/sprites/astronaut-walk.png',
+  './assets/sprites/countdown.png',
+  './assets/sprites/gantry.png'
 ];
 
 // Optional media should not block install if any request fails.

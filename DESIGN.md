@@ -72,3 +72,32 @@ Key press: `transform: scale(0.96)` 0.06s. No extra animation libraries.
 
 - Home Screen / favicon: pixel rocket (red nose, white body, blue window, red fins, blue base) on `#1a1a2e`. **No ring.** `icon-192.png` must fill the 192×192 frame (downscale of `icon-512.png`), not a quarter-sized sprite with a white L around it.
 - Manifest `background_color` / `theme_color`: `#1a1a2e`.
+
+## Pixel sprites
+
+The intro and the gameplay ship/lives/level-complete art are native-resolution
+PNGs under `assets/sprites/`, scaled up in CSS with `image-rendering: pixelated`.
+Nothing is anti-aliased and nothing is hand-edited — regenerate instead:
+
+```bash
+python3 tools/make-sprites.py
+python3 tools/make-astronaut-sheet.py
+```
+
+| Sprite | Native size | Notes |
+|---|---|---|
+| `rocket-idle.png` | 76x127 | Hero rocket, stands on its fin tips |
+| `rocket-fire.png` | 152x171 | Two flicker frames side by side |
+| `rocket-small.png` | 24x30 | Map panel |
+| `life-rocket.png` / `-empty.png` | 12x16 | HUD pips |
+| `astronaut-walk.png` | 816x102 | 12 frames of 68x102 |
+| `countdown.png` | 224x26 | 4 cells of 56x26: 3 / 2 / 1 / GO! |
+| `gantry.png` | 120x82 | Stepped ramp, platform, support tower |
+
+Sprite palette: warm charcoal outline `#382e3e`, cream hull `#eae3d3`, cool steel
+`#9eaab4`, orange-red `#cb5436` with gold `#f3c05a` accents, teal glass `#5cb2b2`.
+Countdown digits run cream -> yellow `#f7cb2e` -> orange -> red with a
+checkerboard dither at the base.
+
+Intro sizing is driven by `--rocket-h` on `.intro-overlay`; the gantry and
+astronaut are derived from it so the ramp always meets the hull hatch.

@@ -46,13 +46,11 @@
   var astronautDancing = document.getElementById('astronautDancing');
   var continueBtn = document.getElementById('continueBtn');
   var introOverlay = document.getElementById('introOverlay');
-  var introScene = document.getElementById('introScene');
-  var blastOffScene = document.getElementById('blastOffScene');
   var countdownOverlay = document.getElementById('countdownOverlay');
   var countdownNumber = document.getElementById('countdownNumber');
   var astronaut = document.getElementById('astronaut');
-  var doorLeft = document.getElementById('doorLeft');
-  var doorRight = document.getElementById('doorRight');
+  var introStage = document.getElementById('introStage');
+  var introRocket = document.getElementById('introRocket');
   var playAgainBtn = document.getElementById('playAgainBtn');
   var playAgainBtnWin = document.getElementById('playAgainBtnWin');
   var btnSubmit = document.getElementById('btnSubmit');
@@ -61,7 +59,6 @@
   var countdownSound = document.getElementById('countdownSound');
   var rocketLaunchSound = document.getElementById('rocketLaunchSound');
   var rocketSound = document.getElementById('rocketSound');
-  var blastOffRocket = document.getElementById('blastOffRocket');
   var levelCompleteSound = document.getElementById('levelCompleteSound');
   var correctSound = document.getElementById('correctSound');
   var wrongSound = document.getElementById('wrongSound');
@@ -716,90 +713,87 @@
     playSfx('rocketLaunch', rocketLaunchSound, 0.8);
   }
 
+  // Astronaut needs to cross the gantry before the countdown starts; this
+  // matches the walk beat in the reference sequence.
+  var ASTRONAUT_WALK_MS = 4200;
+
+  function resetIntroStage() {
+    if (introRocket) {
+      introRocket.classList.remove('is-igniting', 'is-launching');
+      introRocket.style.removeProperty('--launch-dur');
+    }
+    if (astronaut) astronaut.classList.remove('is-walking');
+  }
+
   function runIntro() {
     state.phase = 'intro';
     introOverlay.classList.remove('hidden');
     countdownOverlay.classList.add('hidden');
-    if (introScene) introScene.classList.remove('hidden');
-    if (blastOffScene) {
-      blastOffScene.classList.add('hidden');
-      blastOffScene.classList.remove('blast-off-active');
-    }
-    doorLeft.classList.remove('open');
-    doorRight.classList.remove('open');
-    astronaut.classList.remove('climb');
-    astronaut.style.opacity = '1';
+    if (introStage) introStage.classList.remove('hidden');
+    resetIntroStage();
 
     setTimeout(function () {
-      astronaut.classList.add('climb');
+      // Restart the walk cleanly even on a replay.
+      void astronaut.offsetWidth;
+      astronaut.classList.add('is-walking');
     }, 500);
 
     setTimeout(function () {
-      doorLeft.classList.add('open');
-      doorRight.classList.add('open');
-    }, 2600);
-
-    setTimeout(function () {
-      doorLeft.classList.remove('open');
-      doorRight.classList.remove('open');
       countdownOverlay.classList.remove('hidden');
       runCountdown();
-    }, 3600);
+    }, 500 + ASTRONAUT_WALK_MS);
+  }
+
+  function launchDurationSec() {
+    var launchBuffer = sfxBuffers.rocketLaunch;
+    if (launchBuffer && launchBuffer.duration > 0) return launchBuffer.duration;
+    if (rocketLaunchSound && isFinite(rocketLaunchSound.duration) && rocketLaunchSound.duration > 0) {
+      return rocketLaunchSound.duration;
+    }
+    return 3.5;
   }
 
   function runCountdown() {
     state.phase = 'countdown';
-    var steps = ['3', '2', '1', 'GO!'];
+    var steps = ['3', '2', '1', 'go'];
     var stepIndex = 0;
-    countdownNumber.textContent = steps[0];
-    countdownNumber.classList.remove('countdown-go');
+    countdownNumber.dataset.step = steps[0];
     fadeOutStartSoundtrack(null, 700);
     playRocketSound();
     playSfx('countdown', countdownSound, 0.8);
 
     function showNext() {
       stepIndex += 1;
-      if (stepIndex < steps.length) {
-        countdownNumber.textContent = steps[stepIndex];
-        if (steps[stepIndex] === 'GO!') {
-          countdownNumber.classList.add('countdown-go');
-        } else {
-          countdownNumber.classList.remove('countdown-go');
-        }
-        countdownNumber.style.animation = 'none';
-        void countdownNumber.offsetWidth;
-        countdownNumber.style.animation = 'countdownPop 1s ease-out';
+      if (stepIndex >= steps.length) return;
+
+      countdownNumber.dataset.step = steps[stepIndex];
+      countdownNumber.style.animation = 'none';
+      void countdownNumber.offsetWidth;
+      countdownNumber.style.animation = 'countdownPop 1s ease-out';
+
+      if (steps[stepIndex] !== 'go') {
         setTimeout(showNext, 1000);
-      } else {
-        countdownOverlay.classList.add('hidden');
-        if (introScene) introScene.classList.add('hidden');
-        if (blastOffScene) {
-          blastOffScene.classList.remove('hidden');
-          var durationSec = 3.5;
-          var launchBuffer = sfxBuffers.rocketLaunch;
-          if (launchBuffer && launchBuffer.duration > 0) {
-            durationSec = launchBuffer.duration;
-          } else if (rocketLaunchSound && isFinite(rocketLaunchSound.duration) && rocketLaunchSound.duration > 0) {
-            durationSec = rocketLaunchSound.duration;
-          }
-          if (blastOffRocket) blastOffRocket.style.animationDuration = durationSec + 's';
-          blastOffScene.classList.add('blast-off-active');
-          playRocketLaunchSound();
-          setTimeout(function () {
-            introOverlay.classList.add('hidden');
-            if (blastOffScene) {
-              blastOffScene.classList.add('hidden');
-              blastOffScene.classList.remove('blast-off-active');
-            }
-            if (blastOffRocket) blastOffRocket.style.animationDuration = '';
-            if (introScene) introScene.classList.remove('hidden');
-            startLevel();
-          }, durationSec * 1000);
-        } else {
-          introOverlay.classList.add('hidden');
-          startLevel();
-        }
+        return;
       }
+
+      // GO! is the ignition beat: the plume lights and the rocket leaves while
+      // the word is still on screen.
+      var durationSec = launchDurationSec();
+      if (introRocket) {
+        introRocket.style.setProperty('--launch-dur', durationSec + 's');
+        introRocket.classList.add('is-igniting');
+        void introRocket.offsetWidth;
+        introRocket.classList.add('is-launching');
+      }
+      playRocketLaunchSound();
+      setTimeout(function () {
+        countdownOverlay.classList.add('hidden');
+      }, 900);
+      setTimeout(function () {
+        introOverlay.classList.add('hidden');
+        resetIntroStage();
+        startLevel();
+      }, durationSec * 1000);
     }
     setTimeout(showNext, 1000);
   }
@@ -930,9 +924,30 @@
     requestAnimationFrame(tick);
   }
 
+  function buildTitleLetters() {
+    if (!gameTitle || gameTitle.querySelector('.title-letter')) return;
+    var text = gameTitle.textContent;
+    var chars = text.split('');
+    var mid = (chars.length - 1) / 2;
+    gameTitle.textContent = '';
+    chars.forEach(function (ch, i) {
+      var span = document.createElement('span');
+      span.className = 'title-letter';
+      span.textContent = ch;
+      // Push each letter away from the centre, outer letters travel furthest.
+      var offset = (i - mid) / mid;
+      span.style.setProperty('--letter-fly', (offset * 70).toFixed(1) + 'vw');
+      span.style.setProperty('--letter-rise', (Math.abs(offset) * -18 - 6).toFixed(1) + 'vh');
+      span.style.setProperty('--letter-spin', (offset * 55).toFixed(1) + 'deg');
+      span.style.setProperty('--letter-delay', Math.round(Math.abs(offset) * 90) + 'ms');
+      gameTitle.appendChild(span);
+    });
+  }
+
   function restoreGameTitle() {
     if (!gameTitle) return;
     gameTitle.classList.remove('fade-out');
+    buildTitleLetters();
   }
 
   var startPhase = 'load';
@@ -959,7 +974,7 @@
     if (gameTitle) gameTitle.classList.add('fade-out');
     setTimeout(function () {
       runIntro();
-    }, 500);
+    }, 720);
   }
 
   function handleIntroStart(e) {
