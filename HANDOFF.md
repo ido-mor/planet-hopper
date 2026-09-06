@@ -1,8 +1,12 @@
 # Handoff — current session
 
-Scope: mobile audit, then the three highest-value fixes from it — first-load
-payload, time-to-play, and the UI font offline — followed by a new app icon.
-Layout, math and the two-tap unlock are untouched.
+Scope: a mobile audit and every item from it except one, plus a new app icon.
+High: first-load payload, time-to-play, UI font offline. Medium: #4, #6, #7,
+#8, #9, #10, #11. Low: #12, #13, #14, #15, #16, #17, #18, #19.
+**#5 is the only thing left undone**, at the owner's request: iPad Pro portrait
+(1024x1366) still clears the `max-width: 900px` rotate gate and renders the
+landscape layout into a tall window.
+Math and the two-tap unlock are untouched.
 
 ## What changed
 
@@ -68,6 +72,73 @@ by the new `tools/make-icons.py`.
   `REQUIRED_ASSETS`. `AGENTS.md` and `DESIGN.md` both described the icon as a
   rocket and were updated.
 
+## Medium-value items
+
+- **#4 problem text clipped.** Level-5 rounding prompts lost their last line at
+  <=360px viewport height: `#answerInputDisplay` is a later sibling with an
+  opaque background, so the overflow was painted over, not clipped. New
+  `fitProblemText()` shrinks the font until it fits. Chosen over more CSS
+  breakpoints because a per-breakpoint font size is brittle across Android
+  landscape sizes and needs retuning for every new problem format. Runs from
+  `showProblem()` and on viewport change only — **not** `renderProblemText()`,
+  which fires per keystroke and would force ~15 layouts per tap.
+- **#6 tap flash.** `-webkit-tap-highlight-color: transparent` on `body`; it
+  inherits, so one declaration covers the keypad and every button.
+- **#7 translucent overlays.** `rgba(0,0,0,0.85)` -> opaque `#0f0f1a`. The
+  overlay always covered the HUD; it was only ever see-through.
+- **#8 double downloads.** SFX `<audio>` elements are the desktop-only fallback
+  and `prefetchSfx()` already fetches every clip, so `preload="auto"` doubled
+  each one. Now `preload="none"` — except `rocketSound`, which keeps
+  `metadata` because `playRocketSound()` gates on `isFinite(duration)` and
+  would otherwise never play if `sounds/rocket.mp3` were ever added.
+- **#9 progress persistence.** `localStorage`, auto-resume verbatim. See the
+  AGENTS.md gameplay section for the contract. Free, offline, no accounts, and
+  no child data leaves the device.
+- **#10 keypad latency.** `pointerdown` instead of `click`, with a second
+  `click` listener guarded by `e.detail === 0` so keyboard activation still
+  works without double-entering.
+- **#11 link previews.** `<title>` -> "Planet Hopper", description, `og:*` and
+  `twitter:*`, plus a real 1200x630 card at `assets/og-card.png` from the new
+  `tools/make-og-card.py`. og:image/og:url are absolute by necessity — carve-out
+  recorded in AGENTS.md.
+- `CACHE_NAME` -> `planet-hopper-v18`.
+
+## Low-value items
+
+- **#12 portrait screen.** Was a bare line of text, and `aria-hidden="true"` on
+  the only thing on screen, so AT users in portrait got nothing. Now the app
+  icon, an animated phone-tipping hint (`rotateHint`) and the copy, with
+  `role="alert"` and no aria-hidden.
+- **#13 tablet landscape.** New `min-width: 1000px` + `min-height: 600px`
+  landscape query: cockpit cap 560 -> 820px, keys to 116px, type scaled. The
+  owner capped this at 3/10 effort; it came in around 2 — one media query.
+  The `min-height` gate keeps tall narrow windows on the phone layout.
+- **#14 touch target.** `min-height: 44px` on the overlay buttons; the
+  short-landscape query had them at 40px.
+- **#15 focus.** `:focus-visible` ring (3px `#f0e860`) on the keypad and overlay
+  buttons - there were no focus styles anywhere. `:focus-visible`, not
+  `:focus`, so pointer presses stay clean.
+- **#16 reduced motion.** Standard recipe (animations and transitions to
+  0.01ms), which lands each animation on its END state - correct throughout
+  here, so nothing is stranded. `runIntro()` also skips the boarding walk,
+  because collapsing its animation would otherwise leave a still screen for the
+  7.4s the timeline still waits.
+- **#17 iOS launch flash.** 10 landscape launch images in `assets/startup/`
+  from `tools/make-startup-images.py`, 138 KB total (flat colour compresses
+  well). Apple matches on the device's *portrait* logical size even for
+  landscape images, so the media queries carry portrait device-width/height.
+  Not precached - iOS caches them itself and the page never loads them.
+- **#18 ship position.** `updateShipPosition()` bails when the diagram measures
+  under 8px and window resize alone never brought it back. Now a
+  `ResizeObserver` on `.path-diagram` retries as soon as it has a real box.
+- **#19 pinch-zoom — raised, then reverted at the owner's call.** Briefly
+  dropped `maximum-scale=1, user-scalable=no` on accessibility grounds; the
+  owner wants no pinch-zoom, so it is back. The reasoning is sound: the board is
+  a fixed landscape layout and an accidental pinch mid-question leaves a child
+  stuck in a view they cannot undo. Recorded in AGENTS.md as a decision so it is
+  not "fixed" again.
+- `CACHE_NAME` -> `planet-hopper-v19`.
+
 ## Verified
 
 Driven in-browser at 667x375, plus 568x320 / 844x390 for the skip hint:
@@ -96,6 +167,61 @@ Driven in-browser at 667x375, plus 568x320 / 844x390 for the skip hint:
   returns 200, and the `<link rel=icon>` / `<link rel=apple-touch-icon>` targets
   resolve. Geometry measured from the pixels: `any` 78% subject height (the
   rocket it replaced was 76%), maskable 68% with 0 px outside the safe circle.
+
+Medium-value items, driven in-browser at 568x320 / 640x360 / 667x375 / 844x390:
+
+- **#4** reached level 5 for real (Continue x4) so a genuine rounding prompt hit
+  the fitter: shrank 15.9px -> 13.9px and `scrollHeight === clientHeight`, two
+  readable lines where the third used to vanish. On a real `resize` the inline
+  size clears and CSS wins again (18px at 844x390) — the shrink is not sticky.
+  Note `resize_window` does not fire a `resize` event; that had to be dispatched
+  explicitly to test the grow-back.
+- **#6** computed `-webkit-tap-highlight-color` is `rgba(0, 0, 0, 0)`.
+- **#7** both overlays compute to `rgb(15, 15, 26)`; screenshotted at 568x320 —
+  no keypad or HUD ghosting behind either.
+- **#8** one resource-timing entry per clip (was two). All SFX report
+  `readyState 0 / networkState 1` before any tap.
+- **#9** played to `{level:5, score:60, lives:2, currentStep:2}`, reloaded, and
+  got all four back exactly, ship animating to the step-2 position (246px, the
+  computed value). Game over clears the save; Play Again clears a planted
+  level-7 save and starts clean at level 1; corrupt JSON and an out-of-range
+  `lives: 0` both fall back to a fresh level 1 without throwing.
+- **#10** `pointerdown` alone enters a digit; a full pointerdown+click sequence
+  enters exactly one; a `detail: 0` click still works (keyboard); a
+  non-primary/right button is ignored.
+- **#11** title, `og:*` and `twitter:*` present; `assets/og-card.png` serves 200
+  as a 15.5 KB image/png and was eyeballed at card size.
+- Regression: full run at 568x320 — two-tap unlock, skip, ten correct answers to
+  level complete, Continue carrying score 100 and 3 lives into level 2 with the
+  ship back on the ground. Only console errors are the documented
+  `sounds/rocket.mp3` 404.
+
+Low-value items:
+
+- **#12** overlay computes `display: flex` with `role="alert"`, no aria-hidden,
+  icon loaded, `rotateHint` running; screenshotted at 390x844.
+- **#13** at 1180x820: frame 820px, keys 98x98, problem 30px, answer 32px.
+- **#14** Play Again and Continue both measure exactly 44px at 568x320.
+- **#15** `:focus-visible` rule present with the yellow outline.
+- **#16** patched `matchMedia` to force the reduced-motion signal on and ran the
+  **first** intro (not Play Again, which skips the walk regardless): walk
+  skipped, 7.3s instead of 14.8s. The `@media` block is in the CSSOM.
+- **#17** all 10 launch images serve 200, 138 KB total, every media query
+  landscape-scoped.
+- **#18** collapsed `.path-diagram` to nothing (updateShipPosition correctly
+  bailed, inline top empty), restored it, and the observer repositioned the ship
+  to 226px. Before this it would have stayed unpositioned.
+- **#19** viewport meta carries `maximum-scale=1, user-scalable=no` (reverted).
+- Regression after all of the above at 667x375: nothing prefetched before the
+  first tap, skip lands in 52ms, ten correct to level complete, Continue carries
+  score 100 / 3 lives into level 2, save updates correctly. Every asset returns
+  200 except the documented `sounds/rocket.mp3`.
+
+**Caveat on the browser-pane harness:** it caches `styles.css` aggressively and
+serves stale copies after an edit, and it pauses CSS transitions, rAF and
+ResizeObserver callbacks while the pane is not painting. Several readings above
+were wrong until a screenshot forced a paint or a fresh `<link>` was injected.
+Anything measured here should be re-checked on a device before it is trusted.
 
 ## Known, not addressed
 

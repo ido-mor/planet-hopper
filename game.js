@@ -15,6 +15,52 @@
 
   var GROUND_COLOR = '#4a5a3a'; // earth green for level 1
 
+  // ---- Saved progress ----
+  // localStorage only: no backend, no accounts, and nothing about a child
+  // leaves the device. Every access is wrapped because Safari in private mode
+  // throws on setItem rather than failing quietly.
+  // Note: iOS caps script-writable storage at 7 days of no interaction for
+  // browser tabs; Home Screen installed apps are exempt.
+  var SAVE_KEY = 'planet-hopper:progress:v1';
+
+  function saveProgress() {
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        v: 1,
+        level: state.level,
+        score: state.score,
+        lives: state.lives,
+        currentStep: state.currentStep
+      }));
+    } catch (err) {}
+  }
+
+  // Returns null for anything we cannot trust, so a corrupt, hand-edited or
+  // future-version save degrades to a clean start instead of a broken board.
+  function loadProgress() {
+    try {
+      var raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      if (!d || d.v !== 1) return null;
+      var level = Math.floor(d.level);
+      var score = Math.floor(d.score);
+      var lives = Math.floor(d.lives);
+      var step = Math.floor(d.currentStep);
+      if (!isFinite(level) || level < 1) return null;
+      if (!isFinite(score)) return null;
+      if (!isFinite(lives) || lives < 1 || lives > 3) return null;
+      if (!isFinite(step) || step < 0 || step > 10) return null;
+      return { level: level, score: score, lives: lives, currentStep: step };
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function clearProgress() {
+    try { localStorage.removeItem(SAVE_KEY); } catch (err) {}
+  }
+
   // ---- State ----
   var state = {
     phase: 'intro',
@@ -98,6 +144,11 @@
     wrong: 'sounds/thunk.wav',
     levelComplete: 'sounds/newthingget.mp3'
   };
+
+  function prefersReducedMotion() {
+    return !!(window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
 
   function isLikelyIOS() {
     var ua = navigator.userAgent || '';
@@ -477,14 +528,13 @@
     targetPlanet.style.background = targetColor;
     targetPlanet.style.borderRadius = '50%';
 
-    // Ground = previous planet (level 1 = earth)
+    // Ground = previous planet (level 1 = earth). Colour only: the band keeps
+    // the flat level-1 slab shape on every level, so leave its border-radius to
+    // the stylesheet.
     if (level === 1) {
       groundPlanet.style.background = GROUND_COLOR;
-      groundPlanet.style.borderRadius = '4px';
     } else {
-      var prevColor = PLANET_COLORS[(level - 2) % PLANET_COLORS.length];
-      groundPlanet.style.background = prevColor;
-      groundPlanet.style.borderRadius = '50%';
+      groundPlanet.style.background = PLANET_COLORS[(level - 2) % PLANET_COLORS.length];
     }
 
     if (levelCompletePlanet) {
@@ -536,6 +586,25 @@
     }
     if (btnSubmit) {
       btnSubmit.disabled = !String(state.userInput || '').trim();
+    }
+  }
+
+  // Level 5 rounding prompts run long, and on short landscape phones (<=360px
+  // tall) three lines do not fit the problem box. The answer viewport is a
+  // later sibling with an opaque background, so the overflow gets painted over
+  // rather than clipped - the last line simply vanishes. Shrink to fit instead
+  // of guessing a font size per breakpoint, which would need retuning for every
+  // new screen size and problem format.
+  // Called from showProblem() and on resize only, never from renderProblemText:
+  // that runs on every keystroke and this forces a layout per iteration.
+  function fitProblemText() {
+    if (!mathProblemEl) return;
+    mathProblemEl.style.fontSize = '';
+    var fs = parseFloat(getComputedStyle(mathProblemEl).fontSize);
+    if (!isFinite(fs)) return;
+    while (fs > 9 && mathProblemEl.scrollHeight > mathProblemEl.clientHeight) {
+      fs -= 1;
+      mathProblemEl.style.fontSize = fs + 'px';
     }
   }
 
@@ -596,6 +665,7 @@
     state.currentProblem = generateProblem();
     state.userInput = '';
     renderProblemText();
+    fitProblemText();
   }
 
   function showFeedback(correct) {
@@ -631,6 +701,9 @@
         return;
       }
       if (!correct && state.lives <= 0) {
+        // The run is finished. A save holding lives: 0 would resume straight
+        // into an unplayable board; loadProgress' range check is the backstop.
+        clearProgress();
         state.phase = 'gameOver';
         gameOverOverlay.classList.remove('hidden');
         gameOverText.classList.add('flash');
@@ -682,6 +755,7 @@
       updateShipPosition();
     }
     updateScoreDisplay();
+    saveProgress();
     showFeedback(correct);
   }
 
@@ -778,7 +852,10 @@
   // options.skipWalk jumps straight to the countdown. Play Again uses it: the
   // boarding walk is worth watching once, not after every game over.
   function runIntro(options) {
-    var skipWalk = !!(options && options.skipWalk);
+    // Reduced motion also skips the walk. The CSS collapses its animation to a
+    // hair, but the timeline would still wait ASTRONAUT_WALK_MS on a screen
+    // where nothing is moving, so the wait has to go with it.
+    var skipWalk = !!(options && options.skipWalk) || prefersReducedMotion();
     cancelIntroTimers();
     state.phase = 'intro';
     introOverlay.classList.remove('hidden');
@@ -880,9 +957,22 @@
 
   function startLevel() {
     state.phase = 'playing';
-    state.currentStep = 0;
-    state.lives = 3;
-    state.score = 0;
+    // Resume exactly where the player stopped. This has to happen before the
+    // updatePlanetColors / updateLives / display calls below, which all read
+    // state. playAgain() clears the save first, so its startLevel finds
+    // nothing and starts clean; state.level is deliberately left alone in the
+    // fallback because playAgain is what resets it to 1.
+    var saved = loadProgress();
+    if (saved) {
+      state.level = saved.level;
+      state.score = saved.score;
+      state.lives = saved.lives;
+      state.currentStep = saved.currentStep;
+    } else {
+      state.currentStep = 0;
+      state.lives = 3;
+      state.score = 0;
+    }
     state.lastProblem = null;
     updatePlanetColors();
     scheduleShipPosition();
@@ -899,6 +989,7 @@
   function continueToNextLevel() {
     state.level += 1;
     state.currentStep = 0;
+    saveProgress();
     // Lives and score carry over from previous level
     state.lastProblem = null;
     levelCompleteOverlay.classList.add('hidden');
@@ -911,6 +1002,8 @@
   }
 
   function playAgain() {
+    // Before runIntro, so the startLevel it ends in finds no save.
+    clearProgress();
     state.level = 1;
     if (startSoundtrack) {
       startSoundtrack.pause();
@@ -926,22 +1019,42 @@
     unlockAudio();
   }
 
+  function handleKeyPress(btn) {
+    onFirstInteraction();
+    if (btn === btnSubmit) {
+      submitAnswer();
+      return;
+    }
+    playKeypadClick();
+    if (btn.classList.contains('num')) {
+      var d = btn.getAttribute('data-digit');
+      if (d != null) addDigit(parseInt(d, 10));
+    } else if (btn === btnDelete) {
+      deleteDigit();
+    }
+  }
+
   if (keypadEl) {
-    keypadEl.addEventListener('click', function (e) {
+    // pointerdown, not click: click lands 50-100ms after touchend even with
+    // touch-action: manipulation, and this is the most repeated action in the
+    // game. No preventDefault here - it suppresses focus and its effect on the
+    // following click is inconsistent across browsers.
+    keypadEl.addEventListener('pointerdown', function (e) {
+      if (!e.isPrimary || e.button !== 0) return;
       var btn = e.target.closest('.keypad-btn');
-      if (!btn) return;
-      onFirstInteraction();
-      if (btn === btnSubmit) {
-        submitAnswer();
-        return;
-      }
-      playKeypadClick();
-      if (btn.classList.contains('num')) {
-        var d = btn.getAttribute('data-digit');
-        if (d != null) addDigit(parseInt(d, 10));
-      } else if (btn === btnDelete) {
-        deleteDigit();
-      }
+      if (!btn || btn.disabled) return;
+      handleKeyPress(btn);
+    });
+
+    // Keyboard activation (Enter / Space on a focused button) synthesises a
+    // click with detail 0. Pointer-driven clicks always carry detail >= 1 and
+    // were already handled above, so this keeps the keyboard path alive
+    // without double-entering a digit.
+    keypadEl.addEventListener('click', function (e) {
+      if (e.detail !== 0) return;
+      var btn = e.target.closest('.keypad-btn');
+      if (!btn || btn.disabled) return;
+      handleKeyPress(btn);
     });
   }
 
@@ -1013,6 +1126,7 @@
     chars.forEach(function (ch, i) {
       var span = document.createElement('span');
       span.className = 'title-letter';
+      if (ch === ' ') span.className += ' title-break';
       span.textContent = ch;
       // Push each letter away from the centre, outer letters travel furthest.
       var offset = (i - mid) / mid;
@@ -1057,8 +1171,18 @@
     }, 720);
   }
 
+  // pointerdown, touchend and the synthetic click that follows them all reach
+  // this handler for a single tap. Without the window, the click after the
+  // "Tap to play." pointerdown lands while startPhase is already 'starting'
+  // and skips the intro outright: the board flashes up, then the 720ms timer
+  // fires runIntro() and drops back into the title scatter.
+  var lastIntroTapAt = 0;
+
   function handleIntroStart(e) {
     if (e && e.pointerType === 'mouse' && e.button !== 0) return;
+    var now = Date.now();
+    if (now - lastIntroTapAt < 400) return;
+    lastIntroTapAt = now;
     if (startPhase === 'load') {
       loadGameFromTap();
       return;
@@ -1094,11 +1218,28 @@
   }
   prefetchSfx();
   scheduleShipPosition();
-  window.addEventListener('resize', updateShipPosition);
+  function onViewportChange() {
+    updateShipPosition();
+    fitProblemText();
+  }
+
+  // updateShipPosition() gives up when the diagram measures under 8px tall
+  // (a restored background PWA, a hidden tab) and window resize alone never
+  // brings it back. Observing the element itself closes that hole: the
+  // callback fires as soon as it has a real box.
+  if (window.ResizeObserver && shipContainer && shipContainer.parentElement) {
+    try {
+      new ResizeObserver(function () {
+        updateShipPosition();
+      }).observe(shipContainer.parentElement);
+    } catch (err) {}
+  }
+
+  window.addEventListener('resize', onViewportChange);
   window.addEventListener('orientationchange', function () {
-    setTimeout(updateShipPosition, 150);
+    setTimeout(onViewportChange, 150);
   });
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', updateShipPosition);
+    window.visualViewport.addEventListener('resize', onViewportChange);
   }
 })();

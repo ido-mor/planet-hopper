@@ -47,7 +47,12 @@ Title outline cycles cyan / magenta / yellow / green (`#0ff`, `#f0f`, `#ff0`, `#
 - Header above the frame: lives | level | score.
 - Keypad: 6 columns, last column `minmax(0, 2.2fr)`. Number keys `aspect-ratio: 1; border-radius: 50%`. Del/Submit `border-radius: 999px`, stretch.
 - iPhone landscape: `@media (orientation: landscape) and (max-height: 500px)` compresses planets, keypad, header, and cockpit padding so Del/Submit stay on screen.
-- Portrait phones: rotate overlay only (`z-index: 50`).
+- Portrait phones: rotate overlay only (`z-index: 50`) — app icon, an animated phone-tipping hint, then the copy.
+- Tablets (landscape, >=1000x600): cockpit cap 560px -> 820px, keys 86px -> 116px, problem 30px / answer 32px.
+- Keyboard focus: 3px `#f0e860` `:focus-visible` ring, 3px offset. Pointer presses do not show it.
+- Overlay buttons hold a 44pt minimum height.
+- `prefers-reduced-motion: reduce` collapses all animation and transition durations.
+- Game-over / level-complete / win overlays sit on an **opaque** `#0f0f1a`, not a wash. At 85% the question text, keypad and HUD all read through and the screen looks like noise instead of a change of state.
 
 ## Motion (keep these)
 
