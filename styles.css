@@ -1087,10 +1087,20 @@ body {
   100%   { left: calc(var(--gantry-left) + var(--gantry-w) * 1.04); bottom: 45.4%; opacity: 0; }
 }
 
-/* Skip affordance during the launch sequence. Bottom-right, clear of the rocket
-   (right: 15%+) throughout: the title has faded, the astronaut walks in along
-   the bottom-left, the rocket stands right-of-centre and the countdown is
-   centred. Stacked one word per line inside the ring.
+/* Skip affordance during the launch sequence. Top-left, the one corner nothing
+   in the sequence ever enters: the astronaut walks in along the *bottom* left,
+   the rocket stands right-of-centre and launches straight up its own column,
+   the gantry is bottom-right and the countdown is centred. The title block does
+   sit at top:10%/left:0, but it has faded out well before the skip arms and is
+   never restored, so the two never share the screen. Stacked one word per line
+   inside the ring.
+
+   The safe-area insets have to be added here explicitly. .intro-overlay does
+   carry them as padding, but an absolutely positioned child resolves against
+   the *outer* edge of the padding box, so that padding does not move this at
+   all (measured: a 44px inset shifted the ring 0px). In iPhone landscape the
+   notch sits on a long edge with a ~44-59px inset, which is exactly this
+   corner, so left/top add env() on top of the percentage.
 
    White, not the #8f8 used by .click-to-start: that green is the primary
    "tap here" colour and a secondary, held gesture should not compete with it.
@@ -1103,8 +1113,8 @@ body {
    44px minimum target). */
 .intro-skip {
   position: absolute;
-  right: 3%;
-  bottom: 8%;
+  left: calc(env(safe-area-inset-left, 0px) + 3%);
+  top: calc(env(safe-area-inset-top, 0px) + 8%);
   z-index: 5;
   width: 9.5em;
   aspect-ratio: 1;
@@ -1488,14 +1498,14 @@ body {
   }
 }
 
-/* The narrowest landscape phones (568x320 and friends) are the one place the
-   ring stops clearing the rocket: at 9.5em it crosses the right fin. Only
-   those widths shrink it -- 844x390 keeps the roomier circle. Still 72px, so
-   comfortably above the 44px minimum target. */
+/* The narrowest landscape phones (568x320 and friends) have the least room
+   above the ground line, so the ring is trimmed there to stay clear of the
+   title column and the countdown. 844x390 keeps the roomier circle. Still
+   72px, comfortably above the 44px minimum target. */
 @media (orientation: landscape) and (max-height: 500px) and (max-width: 600px) {
   .intro-skip {
     width: 8em;
-    right: 2%;
+    left: calc(env(safe-area-inset-left, 0px) + 2%);
     line-height: 1.4;
   }
 }

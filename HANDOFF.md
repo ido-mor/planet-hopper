@@ -27,9 +27,16 @@ Math and the two-tap unlock are untouched.
   the countdown voice and launch roar stop when the sequence is cut short.
 - **`runIntro({ skipWalk: true })` on Play Again** — straight to the countdown.
   The boarding walk is worth watching once, not after every game over.
-- **`#introSkip` is a `<button>`** ("Hold to skip.", bottom-right, white, on a
+- **`#introSkip` is a `<button>`** ("Hold to skip.", top-left, white, on a
   translucent disc with a progress ring). It appears at the same moment the skip
   arms, so the affordance never lies.
+- **Top-left is the one corner the sequence never enters.** The astronaut walks
+  the *bottom* left, the rocket stands right-of-centre and launches straight up
+  its own column, the gantry is bottom-right and the countdown is centred. The
+  title block does sit at `top: 10%; left: 0`, but it has faded before the skip
+  arms and `restoreGameTitle()` only runs at init, so they never share the
+  screen. Verified by sampling every 100ms across the whole 13s intro at
+  568x320, 844x390 and 1024x768: zero overlaps, closest approach 73px.
 - **800 ms hold, not a tap.** A tap anywhere on the overlay used to skip, which
   a stray poke could trigger during the 12 s sequence. 800 ms is clear of the
   ~500 ms the OS uses to separate a tap from a long press, and still short
@@ -56,9 +63,15 @@ Math and the two-tap unlock are untouched.
   title-scatter is counted). `beginSkipHold()` also refuses while the ring still
   carries `.hidden`, covering the window before `runIntro()` has set the arm at
   all. `skipIntro()` stays idempotent via its phase guard.
-- The ring shrinks to `8em` at `right: 2%` below 600 px wide. At 9.5em it
-  crossed the rocket's right fin on a 568x320 board; 844x390 keeps the roomier
-  86 px circle.
+- The ring shrinks to `8em` below 600 px wide; 844x390 keeps the roomier 86 px
+  circle.
+- **`.intro-skip` adds the safe-area insets itself** —
+  `left: calc(env(safe-area-inset-left, 0px) + 3%)`. `.intro-overlay` does carry
+  the insets as padding, but an absolutely positioned child resolves against the
+  *outer* edge of the padding box, so that padding does not move the ring at all
+  (measured: a 44px inset shifted it 0px). In iPhone landscape the notch sits on
+  a long edge with a ~44-59px inset, i.e. exactly this corner, so without the
+  `env()` the ring would sit under it.
 - **Press Start 2P self-hosted.** It came from `fonts.googleapis.com`, which
   `sw.js` cannot cache — the fetch handler skips anything not
   `response.type === 'basic'`, and both the Google CSS and the gstatic woff2
