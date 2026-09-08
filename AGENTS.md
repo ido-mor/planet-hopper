@@ -84,6 +84,7 @@ Do not autoplay Hero Immortal. Do not merge the two screens into one tap.
 - Optional engine bed `sounds/rocket.mp3` fades in ~0.3s / out ~0.5s over ~4s if the file exists and has a duration. **The file is not in the repo**; missing is fine.
 - Blast-off animation duration matches `rocket_launch.wav` length when known.
 - The gantry is **static** and stays standing after the rocket leaves. Do not reintroduce a shifting blue rocket-body detail.
+- **Skipping is an 800ms hold on `#introSkip`, not a tap.** The button is a white `Hold to skip.` label on a translucent disc, bottom-right, with a progress ring that fills clockwise from 12 o'clock; releasing early rewinds it counter-clockwise in under 200ms. The ring is the only hit target — a tap anywhere else on the overlay is inert while the sequence runs. The arc is driven from `requestAnimationFrame`, never CSS, because the blanket reduced-motion rule would collapse a CSS arc to its end state and leave the button with no feedback. `resetSkipHold()` (snap) and `cancelSkipHold()` (animated rewind) are separate on purpose: only a finger lifting off animates.
 
 ### Gameplay
 - **10 steps** from ground to target (`state.currentStep` 0–10). Ship `top` is computed from ground/planet bounding rects (`updateShipPosition`), not from the `.path-step` dots.
@@ -196,7 +197,7 @@ Motion respects `prefers-reduced-motion: reduce`: the CSS collapses every animat
 
 Keep existing timings unless asked: ship thrust 0.5s, feedback overlay 1.2s, title scatter 620ms + per-letter delay, countdown pop 1s, `runIntro()` walk beat (500ms delay, `ASTRONAUT_WALK_MS` 7400: ~3.2s along the ground, then the 4.2s climb), walk cycle 0.72s over 12 frames, level-complete dance 1.8s over 10 frames. Flame flicker is a tiny loop. Do not add animation libraries.
 
-Copy is short, 8-bit, present tense. Start: `Tap to load game.` / `Tap to play.` Rotate: `Rotate your phone to landscape to play.` Level complete: `Great job! Advance to next planet!`
+Copy is short, 8-bit, present tense. Start: `Tap to load game.` / `Tap to play.` Rotate: `Rotate your phone to landscape to play.` Skip: `Hold to skip.` Level complete: `Great job! Advance to next planet!`
 
 ### Testing
 None. Verification is play-testing in landscape (desktop, then iPhone / Home Screen). Do not add a test runner unless asked.
@@ -239,6 +240,9 @@ N/A. Do not add a router or login.
 - **Do not put `assets/og-card.png` or `assets/startup/` in `REQUIRED_ASSETS`.** Crawlers fetch the card and iOS caches the launch images itself at install; the page loads neither, so precaching them spends install bytes for nothing.
 - **Do not remove `user-scalable=no` / `maximum-scale=1` from the viewport.** It was removed once on accessibility grounds and put back on purpose — accidental pinch-zoom on a fixed landscape board is worse for a child than no zoom. Raise it with the owner before changing it again.
 - **Do not drop the reduced-motion walk skip.** The CSS collapses animations to a hair, but `runIntro()` must also pass `skipWalk`, or the timeline still waits `ASTRONAUT_WALK_MS` on a screen where nothing moves.
+- **Do not turn hold-to-skip back into a tap**, and do not make the whole overlay the hit target again. A stray poke during the 12s launch sequence used to blow past the entire intro; 800ms is deliberately clear of the ~500ms the OS uses to tell a tap from a long press.
+- **Do not drop `-webkit-touch-callout: none` / `user-select: none` from `.intro-skip`.** An 800ms press on iOS Safari pops the text-selection callout right in the middle of the hold.
+- **Do not animate the skip ring from CSS.** The blanket `prefers-reduced-motion` rule kills `animation-duration` and `transition-duration` with `!important`, so a CSS arc snaps to full and the button stops giving feedback. It is rAF-driven for that reason.
 - **Do not register the service worker on insecure LAN HTTP.** The inline script already no-ops outside `isSecureContext`.
 - **Do not bump only the PNG** without bumping `CACHE_NAME`, or installed PWAs will keep the old icon.
 - **Do not add a bundler / React / modules** unless explicitly asked. This is three static files plus assets.

@@ -1090,22 +1090,99 @@ body {
 /* Skip affordance during the launch sequence. Bottom-right, clear of the rocket
    (right: 15%+) throughout: the title has faded, the astronaut walks in along
    the bottom-left, the rocket stands right-of-centre and the countdown is
-   centred. Stacked one word per line, left-justified. */
+   centred. Stacked one word per line inside the ring.
+
+   White, not the #8f8 used by .click-to-start: that green is the primary
+   "tap here" colour and a secondary, held gesture should not compete with it.
+   The whole circle is the hit target, so it has to read as a button -- hence
+   the translucent disc, which also keeps the label legible when the rocket
+   hull, the gantry or the centred "GO!" digits pass behind it.
+
+   Sized in em so the font-size override in the short-landscape block scales
+   the ring with the type (11px -> ~104px, 9px -> ~86px; both far above the
+   44px minimum target). */
 .intro-skip {
   position: absolute;
   right: 3%;
   bottom: 8%;
   z-index: 5;
+  width: 9.5em;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  padding: 0;
   font-family: 'Press Start 2P', monospace;
   font-size: 11px;
   line-height: 1.6;
-  color: #8f8;
+  color: #fff;
   opacity: 0.75;
-  padding: 10px 12px;
-  text-align: left;
-  pointer-events: none;
+  text-align: center;
   text-shadow: 2px 2px 0 #0f0f1a;
   animation: clickPulse 1.5s ease-in-out infinite;
+  /* Without the callout/select suppression, an 800ms press on iOS Safari pops
+     the text-selection callout right in the middle of the hold. */
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+.intro-skip-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+}
+
+.intro-skip-track {
+  fill: rgba(15, 15, 26, 0.55);
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 3;
+}
+
+/* Rotated so stroke-dashoffset 0 starts at 12 o'clock and fills clockwise.
+   dasharray is the circumference, 2*PI*46; game.js drives the offset. */
+.intro-skip-fill {
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 289.03;
+  stroke-dashoffset: 289.03;
+  opacity: 0;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.intro-skip-label {
+  position: relative;
+}
+
+/* Three signals that the hold registered: the arc sweeps, the disc darkens and
+   the label thickens. The resting pulse stops so it does not fight the arc. */
+.intro-skip.is-holding {
+  animation: none;
+  opacity: 1;
+}
+
+.intro-skip.is-holding .intro-skip-track {
+  fill: rgba(15, 15, 26, 0.72);
+}
+
+/* Press Start 2P ships weight 400 only, and nothing in this codebase sets
+   font-weight or -webkit-text-stroke -- weight here is always layered
+   text-shadow (see .game-title). On a pixel font a 1px ring in currentColor
+   genuinely fattens the strokes instead of blurring them. */
+.intro-skip.is-holding .intro-skip-label {
+  text-shadow:
+    1px 0 0 currentColor,
+    -1px 0 0 currentColor,
+    0 1px 0 currentColor,
+    0 -1px 0 currentColor,
+    2px 2px 0 #0f0f1a;
 }
 
 .countdown-overlay {
@@ -1408,7 +1485,18 @@ body {
 
   .intro-skip {
     font-size: 9px;
-    padding: 8px 10px;
+  }
+}
+
+/* The narrowest landscape phones (568x320 and friends) are the one place the
+   ring stops clearing the rocket: at 9.5em it crosses the right fin. Only
+   those widths shrink it -- 844x390 keeps the roomier circle. Still 72px, so
+   comfortably above the 44px minimum target. */
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 600px) {
+  .intro-skip {
+    width: 8em;
+    right: 2%;
+    line-height: 1.4;
   }
 }
 

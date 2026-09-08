@@ -112,6 +112,7 @@
   var clickToStart = document.getElementById('clickToStart');
   var loadGameOverlay = document.getElementById('loadGameOverlay');
   var introSkip = document.getElementById('introSkip');
+  var introSkipFill = introSkip ? introSkip.querySelector('.intro-skip-fill') : null;
   var gameTitle = document.getElementById('gameTitle');
   var levelDisplayEl = document.getElementById('levelDisplay');
   var scoreDisplayEl = document.getElementById('scoreDisplay');
@@ -305,6 +306,17 @@
   var introToken = 0;
   var introSkipReadyAt = 0;
   var introSfxNodes = [];
+
+  // ---- Hold-to-skip ----
+  // 800ms: clear of the ~500ms the OS itself uses to tell a tap from a long
+  // press, so a stray poke misses, but short enough that the shortcut still
+  // saves real time out of a ~12s launch sequence.
+  var SKIP_HOLD_MS = 800;
+  var SKIP_RING_LEN = 289.03; // 2*PI*46, the r of .intro-skip-fill
+  var skipHoldRaf = 0;
+  var skipHoldToken = 0;
+  var skipHoldProgress = 0;
+  var skipHolding = false;
 
   function trackIntroSfx(node) {
     if (node && node.stop) introSfxNodes.push(node);
@@ -864,6 +876,7 @@
     // tap on "Tap to play." cannot blow straight past the whole intro.
     introSkipReadyAt = Date.now() + 900;
     if (introSkip) introSkip.classList.add('hidden');
+    resetSkipHold();
     introTimeout(function () {
       if (introSkip) introSkip.classList.remove('hidden');
     }, 900);
@@ -882,11 +895,12 @@
     }, skipWalk ? 400 : 500 + ASTRONAUT_WALK_MS);
   }
 
-  // The one exit from the intro, shared by the natural end and tap-to-skip.
+  // The one exit from the intro, shared by the natural end and hold-to-skip.
   function finishIntro() {
     cancelIntroTimers();
     stopIntroSfx();
     stopRocketSound();
+    resetSkipHold();
     countdownOverlay.classList.add('hidden');
     introOverlay.classList.add('hidden');
     if (introSkip) introSkip.classList.add('hidden');
@@ -900,6 +914,91 @@
     // Cuts the loop short when skipping before the countdown has faded it.
     fadeOutStartSoundtrack(null, 200);
     finishIntro();
+  }
+
+  // The ring is driven from rAF, not CSS, on purpose: the blanket
+  // prefers-reduced-motion rule collapses every animation to 0.01ms with
+  // !important, which would snap a CSS-animated arc straight to full and leave
+  // the only feedback the button has dead on arrival. A progress indicator is
+  // functional motion, so it survives; the decorative resting pulse does not.
+  function setSkipProgress(p) {
+    skipHoldProgress = p;
+    if (!introSkipFill) return;
+    introSkipFill.style.strokeDashoffset = String(SKIP_RING_LEN * (1 - p));
+    introSkipFill.style.opacity = p > 0 ? '1' : '0';
+  }
+
+  function beginSkipHold() {
+    if (skipHolding) return;
+    if (!introSkip || introSkip.classList.contains('hidden')) return;
+    if (state.phase !== 'intro' && state.phase !== 'countdown') return;
+    // Same 900ms arm the affordance appears on, so the ring never lies. The
+    // hidden check above covers the window before runIntro() has set the arm
+    // at all, when introSkipReadyAt is still a stale value from last round.
+    if (Date.now() < introSkipReadyAt) return;
+    skipHolding = true;
+    skipHoldToken += 1;
+    var gen = skipHoldToken;
+    introSkip.classList.add('is-holding');
+    var start = performance.now();
+    function tick(now) {
+      if (gen !== skipHoldToken) return;
+      var p = (now - start) / SKIP_HOLD_MS;
+      if (p >= 1) {
+        // Snap the ring empty before skipping: a completed hold should not
+        // leave a rewind queued on a button that is about to be hidden.
+        resetSkipHold();
+        skipIntro();
+        return;
+      }
+      setSkipProgress(p);
+      skipHoldRaf = requestAnimationFrame(tick);
+    }
+    skipHoldRaf = requestAnimationFrame(tick);
+  }
+
+  // Snap the ring empty with no animation. The rewind belongs to a finger
+  // lifting off; an intro starting or ending should never inherit one, or a
+  // fresh sequence can arm with the previous round's arc still painted.
+  function resetSkipHold() {
+    skipHoldToken += 1;
+    if (skipHoldRaf) cancelAnimationFrame(skipHoldRaf);
+    skipHoldRaf = 0;
+    skipHolding = false;
+    if (introSkip) introSkip.classList.remove('is-holding');
+    setSkipProgress(0);
+  }
+
+  // Release rewinds counter-clockwise, snappily: proportional so a 100ms tap
+  // does not produce a sluggish rewind, capped so a near-complete hold still
+  // snaps back at roughly 4x the fill rate.
+  function cancelSkipHold() {
+    skipHoldToken += 1;
+    if (skipHoldRaf) cancelAnimationFrame(skipHoldRaf);
+    skipHoldRaf = 0;
+    skipHolding = false;
+    // Bold snaps off on release, not after the rewind.
+    if (introSkip) introSkip.classList.remove('is-holding');
+    var from = skipHoldProgress;
+    if (from <= 0) {
+      setSkipProgress(0);
+      return;
+    }
+    var gen = skipHoldToken;
+    var duration = Math.max(80, Math.min(180, from * 200));
+    var start = performance.now();
+    function back(now) {
+      if (gen !== skipHoldToken) return;
+      var t = (now - start) / duration;
+      if (t >= 1) {
+        setSkipProgress(0);
+        skipHoldRaf = 0;
+        return;
+      }
+      setSkipProgress(from * (1 - t));
+      skipHoldRaf = requestAnimationFrame(back);
+    }
+    skipHoldRaf = requestAnimationFrame(back);
   }
 
   function launchDurationSec() {
@@ -1185,8 +1284,8 @@
       return;
     }
     if (startPhase === 'starting') {
-      // Sequence is already running: a tap cuts to the board.
-      skipIntro();
+      // Sequence is already running. A tap does nothing now: skipping is a
+      // hold on #introSkip, so a stray poke cannot blow past the intro.
       return;
     }
     startGameFromTitle();
@@ -1198,6 +1297,54 @@
     handleIntroStart(e);
   }, { passive: false });
   introOverlay.addEventListener('click', handleIntroStart);
+
+  if (introSkip) {
+    introSkip.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      // Keep the overlay handler and its tap-coalescing window out of this.
+      e.stopPropagation();
+      // Capturing forgives the finger drifting off a ~100px target over 800ms;
+      // without it a pointerleave would abort most honest holds.
+      try { introSkip.setPointerCapture(e.pointerId); } catch (err) {}
+      beginSkipHold();
+    });
+    introSkip.addEventListener('pointerup', function (e) {
+      e.stopPropagation();
+      cancelSkipHold();
+    });
+    introSkip.addEventListener('pointercancel', function () {
+      cancelSkipHold();
+    });
+    // The overlay's touchend listener preventDefaults; keep it off the button.
+    introSkip.addEventListener('touchend', function (e) {
+      e.stopPropagation();
+    });
+    introSkip.addEventListener('click', function (e) {
+      e.stopPropagation();
+    });
+    // Keyboard parity: hold Space or Enter. e.repeat guards the key-repeat
+    // stream so the hold starts once, and preventDefault stops Space scrolling.
+    introSkip.addEventListener('keydown', function (e) {
+      if (e.key !== ' ' && e.key !== 'Enter' && e.key !== 'Spacebar') return;
+      e.preventDefault();
+      if (e.repeat) return;
+      beginSkipHold();
+    });
+    introSkip.addEventListener('keyup', function (e) {
+      if (e.key !== ' ' && e.key !== 'Enter' && e.key !== 'Spacebar') return;
+      e.preventDefault();
+      cancelSkipHold();
+    });
+    introSkip.addEventListener('blur', function () {
+      cancelSkipHold();
+    });
+    // rAF pauses while the page is hidden but performance.now() keeps running,
+    // so a hold interrupted by an app switch would resume with a huge elapsed
+    // and fire the skip the instant the player came back. Drop it instead.
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) resetSkipHold();
+    });
+  }
 
   updatePlanetColors();
   updateLevelDisplay();

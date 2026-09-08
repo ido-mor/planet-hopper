@@ -189,7 +189,16 @@
       <div class="countdown-overlay hidden" id="countdownOverlay">
         <span class="countdown-number" id="countdownNumber" data-step="3"></span>
       </div>
-      <div class="intro-skip hidden" id="introSkip">Tap<br>to<br>skip.</div>
+      <!-- Hold, not tap: a stray poke during the launch sequence used to blow
+           past the whole intro. The ring is the only hit target and fills
+           clockwise from 12 o'clock over the hold. -->
+      <button class="intro-skip hidden" id="introSkip" type="button" aria-label="Hold to skip the intro">
+        <svg class="intro-skip-ring" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+          <circle class="intro-skip-track" cx="50" cy="50" r="46"></circle>
+          <circle class="intro-skip-fill" cx="50" cy="50" r="46"></circle>
+        </svg>
+        <span class="intro-skip-label">Hold<br>to<br>skip.</span>
+      </button>
     </div>
   </div>
 

@@ -19,22 +19,46 @@ Math and the two-tap unlock are untouched.
   whole track downloaded behind the black "Tap to load game." screen before any
   interaction — 93% of the app's payload, spent before the player did anything.
   The first tap now starts the fetch, and that tap is the gesture iOS needs.
-- **Tap-to-skip during the launch sequence.** `runIntro()` / `runCountdown()`
-  now register every timer through `introTimeout()`, so `cancelIntroTimers()`
+- **Hold-to-skip during the launch sequence.** `runIntro()` / `runCountdown()`
+  register every timer through `introTimeout()`, so `cancelIntroTimers()`
   can drop the whole pending chain. `finishIntro()` is the single exit, shared
   by the natural end and the skip. An `introToken` generation counter also
   neutralises async work already in flight, and intro SFX nodes are tracked so
   the countdown voice and launch roar stop when the sequence is cut short.
 - **`runIntro({ skipWalk: true })` on Play Again** — straight to the countdown.
   The boarding walk is worth watching once, not after every game over.
-- **`#introSkip` hint** ("Tap to skip.", top-right, `clickPulse`). It appears at
-  the same moment the skip arms, so the affordance never lies.
+- **`#introSkip` is a `<button>`** ("Hold to skip.", bottom-right, white, on a
+  translucent disc with a progress ring). It appears at the same moment the skip
+  arms, so the affordance never lies.
+- **800 ms hold, not a tap.** A tap anywhere on the overlay used to skip, which
+  a stray poke could trigger during the 12 s sequence. 800 ms is clear of the
+  ~500 ms the OS uses to separate a tap from a long press, and still short
+  enough to be worth using. `handleIntroStart` now returns inert while
+  `startPhase === 'starting'`; the ring is the only hit target.
+- The ring is driven from **rAF, not CSS**: the blanket `prefers-reduced-motion`
+  rule collapses every animation to 0.01ms with `!important`, which would snap a
+  CSS arc straight to full and leave the button with no feedback at all. The
+  decorative resting pulse still collapses, which is what should happen.
+- `resetSkipHold()` (snap to empty) vs `cancelSkipHold()` (animated rewind) are
+  deliberately separate. Teardown and setup — `runIntro()`, `finishIntro()`, a
+  completed hold, a page going hidden — snap; only a finger lifting off gets the
+  rewind. Sharing one function let a fresh intro arm with the previous round's
+  arc still painted.
+- `setPointerCapture` on pointerdown forgives finger drift over 800 ms; without
+  it a `pointerleave` on a ~100 px target aborts most honest holds.
+- `-webkit-touch-callout: none` + `user-select: none` on the button: an 800 ms
+  press on iOS Safari otherwise pops the text-selection callout mid-hold.
+- A `visibilitychange` listener drops an in-flight hold. rAF pauses while the
+  page is hidden but `performance.now()` does not, so a hold interrupted by an
+  app switch would otherwise resume with a huge elapsed and fire instantly.
 - Skip is armed 900 ms into `runIntro` so a quick second tap on "Tap to play."
   cannot blow past the whole intro (~1.6 s after that tap, once the 720 ms
-  title-scatter is counted).
-- The `touchend` listener no longer bails out while `startPhase === 'starting'`
-  — that window is now the skip window. `skipIntro()` is idempotent (phase
-  guard), so overlapping pointerdown/touchend/click is safe.
+  title-scatter is counted). `beginSkipHold()` also refuses while the ring still
+  carries `.hidden`, covering the window before `runIntro()` has set the arm at
+  all. `skipIntro()` stays idempotent via its phase guard.
+- The ring shrinks to `8em` at `right: 2%` below 600 px wide. At 9.5em it
+  crossed the rocket's right fin on a 568x320 board; 844x390 keeps the roomier
+  86 px circle.
 - **Press Start 2P self-hosted.** It came from `fonts.googleapis.com`, which
   `sw.js` cannot cache — the fetch handler skips anything not
   `response.type === 'basic'`, and both the Google CSS and the gstatic woff2
