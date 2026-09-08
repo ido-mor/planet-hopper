@@ -384,14 +384,20 @@
   function generateProblem() {
     var level = state.level;
     var types = [];
-    if (level === 5) {
+    if (level === 1) {
+      types = ['add', 'subtract'];
+    } else if (level === 2 || level === 3) {
+      types = ['paren_add_sub', 'paren_mixed'];
+    } else if (level === 4) {
+      types = ['add', 'subtract'];
+    } else if (level === 5) {
       types = ['round'];
+    } else if (level === 6) {
+      types = ['multiply', 'multiply_two'];
+    } else if (level >= 7 && level <= 9) {
+      types = ['multiply_two_two'];
     } else {
-      if (level >= 1) { types.push('add'); types.push('subtract'); }
-      if (level >= 2) { types.push('paren_add_sub'); types.push('paren_mixed'); }
-      if (level >= 6) { types.push('multiply'); types.push('multiply_two'); }
-      if (level >= 7) types.push('multiply_two_two');
-      if (level >= 10) types.push('divide');
+      types = ['divide'];
     }
 
     var type = types[randomInt(0, types.length - 1)];
@@ -403,15 +409,10 @@
         if (level === 1) {
           a = randomInt(1, 99);
           b = randomInt(1, 99);
-        } else if (level <= 3) {
-          a = randomInt(1, level === 3 ? 999 : 99);
-          b = randomInt(1, level === 3 ? 999 : 99);
-          if (level === 2 && a + b > 99) return generateProblem();
         } else {
-          var useFour = level >= 4 && Math.random() < 0.5;
+          var useFour = Math.random() < 0.5;
           a = useFour ? randomInt(1000, 9999) : randomInt(10, 99);
           b = useFour ? randomInt(1000, 9999) : randomInt(10, 99);
-          if (level === 4 && (a < 10 || b < 10)) return generateProblem();
         }
         answer = a + b;
         text = fmt(a) + ' + ' + fmt(b) + ' = ?';
@@ -421,12 +422,8 @@
         if (level === 1) {
           a = randomInt(2, 99);
           b = randomInt(1, a - 1);
-        } else if (level <= 3) {
-          a = randomInt(level === 3 ? 100 : 10, level === 3 ? 999 : 99);
-          b = randomInt(1, a - 1);
-          if (level === 2 && a - b > 99) return generateProblem();
         } else {
-          var useFourA = level >= 4 && Math.random() < 0.5;
+          var useFourA = Math.random() < 0.5;
           a = useFourA ? randomInt(1000, 9999) : randomInt(20, 99);
           var maxB = useFourA ? Math.min(9999, a - 1) : Math.min(99, a - 1);
           if (maxB < 10) return generateProblem();

@@ -98,14 +98,15 @@ Do not autoplay Hero Immortal. Do not merge the two screens into one tap.
 - Levels are infinite. `#winOverlay` exists in the DOM but is **unused**; level win is `#levelCompleteOverlay` (“Great job! Advance to next planet!”). Do not revive the win overlay as the level-complete path.
 
 ### Math by level (do not rebalance without asking)
-- **1:** 1–2 digit add/sub.
-- **2:** add parentheticals; answers max 99.
-- **3:** three-digit; parentheticals max 999.
-- **4:** mix of two-digit and four-digit add/sub (commas in 4-digit).
+Each level is constrained to only the problem type(s) it introduces — no blending in easier/earlier levels' problem types.
+- **1:** 1–2 digit add/sub only.
+- **2:** parentheticals only, answers max 99.
+- **3:** parentheticals only, answers max 999.
+- **4:** mix of two-digit and four-digit add/sub only (commas in 4-digit); no parentheticals.
 - **5:** **estimation only** — round a whole number ≤ 900,000 to a random place (tens … hundred thousands).
-- **6:** single-digit × two-digit (and single × single).
-- **7+:** two-digit × single-digit, etc. **No division yet.**
-- **10+:** division (`÷`), integer quotients generated as `answer * b`.
+- **6:** single-digit × two-digit (and single × single) only.
+- **7–9:** two-digit × single-digit only. **No division yet.**
+- **10+:** division (`÷`) only, integer quotients generated as `answer * b`.
 
 Operators in text: `+`, `-`, `x` (not `*`), `÷`. Answers are non-negative integers. Typed input max **7 digits**, no commas (parser strips commas if present). Submit is disabled while empty.
 
