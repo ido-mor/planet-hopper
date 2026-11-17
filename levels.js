@@ -80,7 +80,7 @@ window.PLANET_HOPPER_LEVELS = [
   {
     id: "area",
     name: "Area",
-    blurb: "Find the area. Grab paper and pencil!",
+    blurb: "Find the area of the shape.",
     type: "area",
     params: { shapes: ["rectangle", "square", "triangle"], minSide: 2, maxSide: 12 }
   },
