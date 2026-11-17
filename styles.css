@@ -394,6 +394,56 @@ body {
   overflow-wrap: anywhere;
 }
 
+.math-problem.has-figure {
+  gap: 16px;
+}
+
+.problem-text {
+  min-width: 0;
+  /* Solve-for-n problems put "n =" on a second line. */
+  white-space: pre-line;
+}
+
+/* Area figure: a pixel outline with its side lengths, drawn by
+   problem-types.js. Sized by height so it never squeezes the text. */
+.problem-figure {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  max-height: 100%;
+}
+
+.problem-figure.hidden {
+  display: none;
+}
+
+.problem-figure svg {
+  height: 92px;
+  width: auto;
+  max-height: 100%;
+  display: block;
+}
+
+.figure-svg rect,
+.figure-svg path {
+  fill: #2a2a3e;
+  stroke: #f0e860;
+  stroke-width: 3;
+  shape-rendering: crispEdges;
+}
+
+.figure-svg path.mark {
+  fill: none;
+  stroke: #a0a0c0;
+  stroke-width: 2;
+}
+
+.figure-svg text {
+  font-family: "Press Start 2P", monospace;
+  font-size: 11px;
+  fill: #e8e8e8;
+}
+
 .answer-viewport {
   box-sizing: border-box;
   width: 100%;
@@ -613,6 +663,85 @@ body {
   color: #80ff80;
   margin: 0;
   text-align: center;
+}
+
+/* Level title card: opens every planet with its name and blurb. Sits above
+   the level-complete overlay so Continue -> card -> board reads as one beat. */
+.level-intro-overlay {
+  position: absolute;
+  inset: 0;
+  background: #0f0f1a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 22px;
+  text-align: center;
+  z-index: 11;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.level-intro-overlay.hidden {
+  display: none;
+}
+
+.level-intro-overlay p {
+  margin: 0;
+}
+
+.level-intro-notice {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #f0e860;
+}
+
+.level-intro-notice.hidden {
+  display: none;
+}
+
+.level-intro-planet {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 4px solid #1a1a2e;
+  box-shadow: 0 0 0 3px #3d3d5c;
+  animation: levelIntroPop 0.45s ease-out;
+}
+
+.level-intro-planet-label {
+  font-size: 12px;
+  color: #a0a0c0;
+}
+
+.level-intro-name {
+  font-size: 22px;
+  line-height: 1.5;
+  color: #80ff80;
+  animation: levelIntroPop 0.45s ease-out;
+}
+
+.level-intro-blurb {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #e8e8e8;
+  max-width: 34ch;
+}
+
+.level-intro-blurb.hidden {
+  display: none;
+}
+
+.level-intro-hint {
+  font-size: 10px;
+  color: #5c5c8a;
+}
+
+@keyframes levelIntroPop {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 /* Level complete: full-width planet (top 1/5 visible), rocket + astronaut on surface */
@@ -1475,6 +1604,47 @@ body {
     line-height: 1.5;
   }
 
+  .problem-figure svg {
+    height: clamp(48px, 18vh, 84px);
+  }
+
+  .math-problem.has-figure {
+    gap: 10px;
+  }
+
+  .figure-svg text {
+    font-size: 12px;
+  }
+
+  .level-intro-overlay {
+    gap: 7px;
+    padding: 10px 12px;
+  }
+
+  .level-intro-planet {
+    width: 40px;
+    height: 40px;
+    border-width: 3px;
+  }
+
+  .level-intro-notice,
+  .level-intro-planet-label {
+    font-size: 10px;
+  }
+
+  .level-intro-name {
+    font-size: clamp(14px, 3.6vw, 18px);
+  }
+
+  .level-intro-blurb {
+    font-size: clamp(9px, 2.2vw, 11px);
+    line-height: 1.6;
+  }
+
+  .level-intro-hint {
+    font-size: 8px;
+  }
+
   /* Landscape phones are much shorter than the mock, so pull the whole launch
      stage down and in to keep the rocket, gantry and title clear of each other. */
   .intro-overlay {
@@ -1537,6 +1707,28 @@ body {
   .answer-viewport {
     font-size: 32px;
     min-height: 72px;
+  }
+
+  .problem-figure svg {
+    height: 120px;
+  }
+
+  .level-intro-planet {
+    width: 80px;
+    height: 80px;
+  }
+
+  .level-intro-name {
+    font-size: 30px;
+  }
+
+  .level-intro-blurb {
+    font-size: 16px;
+  }
+
+  .level-intro-planet-label,
+  .level-intro-notice {
+    font-size: 16px;
   }
 
   .cockpit-header .level-display,
