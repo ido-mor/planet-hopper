@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Planet Hopper — Level Editor</title>
+  <!-- Laptop authoring tool for levels.js. It never touches the game or any
+       saved progress: it builds a new levels.js for you to commit. Not in the
+       service worker cache on purpose. -->
+  <style>
+    @font-face {
+      font-family: 'Press Start 2P';
+      src: url('fonts/PressStart2P-latin.woff2') format('woff2');
+      font-display: swap;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #1a1a2e;
+      color: #e8e8e8;
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    h1, h2, h3 { font-family: "Press Start 2P", monospace; font-weight: normal; margin: 0; }
+    h1 { font-size: 16px; color: #f0e860; }
+    h2 { font-size: 11px; color: #a0a0c0; letter-spacing: 0.05em; }
+    a { color: #80c0ff; }
+    code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; color: #f0e860; }
+    .topbar {
+      display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+      padding: 16px 24px; background: #0f0f1a; border-bottom: 4px solid #3d3d5c;
+    }
+    .topbar .sub { color: #a0a0c0; font-size: 13px; }
+    .banner {
+      margin: 16px 24px 0; padding: 12px 16px; border: 3px solid #5c5c8a; background: #2a2a3e;
+      font-size: 14px;
+    }
+    .banner.warn { border-color: #e08040; }
+    .banner strong { color: #f0e860; }
+    .layout {
+      display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; padding: 16px 24px 48px;
+      align-items: start;
+    }
+    @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+    .levels { display: flex; flex-direction: column; gap: 14px; }
+    .card {
+      background: #2a2a3e; border: 4px solid #3d3d5c; box-shadow: inset 0 0 0 3px #1a1a2e;
+      padding: 16px 18px 14px;
+    }
+    .card.invalid { border-color: #e04050; }
+    .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .card-head .num {
+      font-family: "Press Start 2P", monospace; font-size: 12px; color: #1a1a2e;
+      background: #f0e860; padding: 6px 8px; min-width: 34px; text-align: center;
+    }
+    .card-head .typelabel { color: #a0a0c0; font-size: 13px; flex: 1; }
+    .card-head .id { color: #5c5c8a; font-size: 12px; font-family: ui-monospace, Menlo, monospace; }
+    .btn {
+      font: inherit; font-size: 13px; padding: 6px 10px; cursor: pointer;
+      background: #3d3d5c; color: #e8e8e8; border: 2px solid #1a1a2e;
+    }
+    .btn:hover { background: #4d4d70; }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn.primary { background: #2a5a4a; color: #e8ffe8; font-family: "Press Start 2P", monospace; font-size: 11px; padding: 12px 14px; }
+    .btn.primary:hover { background: #3a6a5a; }
+    .btn.danger { background: #5a2a2a; }
+    .btn.danger:hover { background: #7a3a3a; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 16px; }
+    label.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #a0a0c0; }
+    label.field > span.help { color: #5c5c8a; font-size: 12px; }
+    input[type=text], input[type=number], select, textarea {
+      font: inherit; font-size: 14px; color: #e8e8e8; background: #0f0f1a;
+      border: 2px solid #5c5c8a; padding: 7px 9px; width: 100%;
+    }
+    input:focus, select:focus, textarea:focus { outline: 2px solid #f0e860; outline-offset: 1px; }
+    fieldset.multi { border: 2px solid #5c5c8a; padding: 6px 10px; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; background: #0f0f1a; }
+    fieldset.multi label { display: inline-flex; align-items: center; gap: 6px; color: #e8e8e8; font-size: 13px; }
+    .errors { color: #ff8080; font-size: 13px; margin: 10px 0 0; padding-left: 18px; }
+    .preview { margin-top: 12px; border-top: 2px solid #3d3d5c; padding-top: 10px; }
+    .preview-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .samples { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sample {
+      display: flex; align-items: center; gap: 10px;
+      background: #0f0f1a; border: 2px solid #3d3d5c; padding: 8px 12px;
+      font-family: "Press Start 2P", monospace; font-size: 10px; line-height: 1.7; white-space: pre-line;
+    }
+    .sample .ans { color: #f0e860; }
+    .sample svg { height: 64px; width: auto; }
+    .sample svg rect, .sample svg path { fill: #2a2a3e; stroke: #f0e860; stroke-width: 3; shape-rendering: crispEdges; }
+    .sample svg path.mark { fill: none; stroke: #a0a0c0; stroke-width: 2; }
+    .sample svg text { font-family: "Press Start 2P", monospace; font-size: 11px; fill: #e8e8e8; }
+    .side { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .side .card { padding: 14px 16px; }
+    .side ol { padding-left: 20px; margin: 8px 0 0; font-size: 13px; color: #c0c0d8; }
+    .side ol li { margin-bottom: 4px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    textarea.out { height: 220px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre; }
+    .status { font-size: 13px; color: #a0a0c0; min-height: 1.4em; }
+    .status.ok { color: #80ff80; }
+    .empty { color: #a0a0c0; padding: 24px; text-align: center; border: 2px dashed #3d3d5c; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Planet Hopper — Level Editor</h1>
+    <span class="sub">Edits the play order and what each planet asks. Nothing here changes the game until you ship the file.</span>
+  </header>
+
+  <div class="banner" id="banner">
+    <strong>Heads up:</strong> reordering, adding, removing or retuning a level resets saved progress on every device the next time the game opens
+    (the child sees “New missions!” and starts from planet 1). Renaming a level or its blurb does not.
+  </div>
+
+  <div class="layout">
+    <section>
+      <h2 style="margin-bottom:10px">Play order</h2>
+      <div class="levels" id="levels"></div>
+      <div class="card" style="margin-top:14px">
+        <div class="row">
+          <label class="field" style="flex:1; min-width: 200px">Add a level
+            <select id="addType"></select>
+          </label>
+          <button class="btn primary" id="addBtn" type="button">+ Add level</button>
+        </div>
+      </div>
+      <p style="color:#a0a0c0; font-size:13px; margin-top:14px">
+        After the last level the game keeps going by revisiting earlier levels in a random order, each on a new planet colour.
+      </p>
+    </section>
+
+    <aside class="side">
+      <div class="card">
+        <h2>Ship it</h2>
+        <div class="status" id="status"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn primary" id="downloadBtn" type="button">Download levels.js</button>
+          <button class="btn" id="copyBtn" type="button">Copy</button>
+          <button class="btn" id="resetBtn" type="button" title="Reload the shipped levels.js, discarding edits here">Reset</button>
+        </div>
+        <ol>
+          <li>Replace <code>levels.js</code> in the repo with the download.</li>
+          <li>Bump <code>CACHE_NAME</code> in <code>sw.js</code> (v22 → v23 …).</li>
+          <li>Commit and push. Installed copies pick it up on next open.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h2>Output</h2>
+        <textarea class="out" id="output" readonly spellcheck="false" style="margin-top:8px"></textarea>
+      </div>
+    </aside>
+  </div>
+
+  <script src="problem-types.js"></script>
+  <script src="levels.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      var PH = window.PlanetHopperProblems;
+      var shipped = PH.normalizeLevels(window.PLANET_HOPPER_LEVELS).levels;
+      var shippedId = PH.fingerprint(shipped);
+      var levels = JSON.parse(JSON.stringify(shipped));
+      var seeds = {}; // per-level reroll counter so previews stay put while typing
+
+      var levelsEl = document.getElementById('levels');
+      var outputEl = document.getElementById('output');
+      var statusEl = document.getElementById('status');
+      var bannerEl = document.getElementById('banner');
+      var addTypeEl = document.getElementById('addType');
+
+      PH.order.forEach(function (key) {
+        var o = document.createElement('option');
+        o.value = key;
+        o.textContent = PH.types[key].label;
+        addTypeEl.appendChild(o);
+      });
+
+      function el(tag, attrs, children) {
+        var node = document.createElement(tag);
+        if (attrs) Object.keys(attrs).forEach(function (k) {
+          if (k === 'class') node.className = attrs[k];
+          else if (k === 'text') node.textContent = attrs[k];
+          else if (k === 'html') node.innerHTML = attrs[k];
+          else if (k.indexOf('on') === 0) node.addEventListener(k.slice(2), attrs[k]);
+          else node.setAttribute(k, attrs[k]);
+        });
+        (children || []).forEach(function (c) { if (c) node.appendChild(c); });
+        return node;
+      }
+
+      function uniqueId(base) {
+        var id = PH.slugify(base);
+        var taken = {};
+        levels.forEach(function (l) { taken[l.id] = true; });
+        var candidate = id, n = 2;
+        while (taken[candidate]) candidate = id + '-' + (n++);
+        return candidate;
+      }
+
+      // ---- Serialising levels.js ----
+      function jsValue(v, indent) {
+        if (Array.isArray(v)) {
+          return '[' + v.map(function (x) { return jsValue(x, indent); }).join(', ') + ']';
+        }
+        if (v && typeof v === 'object') {
+          var keys = Object.keys(v);
+          return '{ ' + keys.map(function (k) { return k + ': ' + jsValue(v[k], indent); }).join(', ') + ' }';
+        }
+        return JSON.stringify(v);
+      }
+
+      function serialize() {
+        var lines = [];
+        lines.push('// Planet Hopper — level curriculum.');
+        lines.push('//');
+        lines.push('// This is the play order. Each level asks one kind of problem (`type`, from');
+        lines.push('// problem-types.js) with its own settings (`params`). After the last level the');
+        lines.push('// game keeps going by revisiting earlier levels in a random order, each on a');
+        lines.push('// new planet colour.');
+        lines.push('//');
+        lines.push('// Edit by hand or open editor.html, which builds this file for you. Then:');
+        lines.push('//   1. replace this file,');
+        lines.push('//   2. bump CACHE_NAME in sw.js so installed copies pick it up,');
+        lines.push('//   3. commit and push.');
+        lines.push('//');
+        lines.push('// Changing a level\'s id, type, params or the order RESETS SAVED PROGRESS on');
+        lines.push('// every device the next time the game opens (the child sees "New missions!"');
+        lines.push('// and starts from planet 1). Renaming a level or editing its blurb is free.');
+        lines.push('window.PLANET_HOPPER_LEVELS = [');
+        levels.forEach(function (l, i) {
+          lines.push('  {');
+          lines.push('    id: ' + JSON.stringify(l.id) + ',');
+          lines.push('    name: ' + JSON.stringify(l.name) + ',');
+          lines.push('    blurb: ' + JSON.stringify(l.blurb) + ',');
+          lines.push('    type: ' + JSON.stringify(l.type) + ',');
+          lines.push('    params: ' + jsValue(l.params));
+          lines.push('  }' + (i < levels.length - 1 ? ',' : ''));
+        });
+        lines.push('];');
+        return lines.join('\n') + '\n';
+      }
+
+      function allErrors() {
+        var errs = [];
+        levels.forEach(function (l, i) {
+          if (!l.name.trim()) errs.push('Level ' + (i + 1) + ' has no name.');
+          PH.validateParams(l.type, l.params).forEach(function (e) {
+            errs.push('Level ' + (i + 1) + ': ' + e);
+          });
+        });
+        if (!levels.length) errs.push('There are no levels.');
+        return errs;
+      }
+
+      function refreshOutput() {
+        var errs = allErrors();
+        var ok = !errs.length;
+        outputEl.value = ok ? serialize() : '// Fix the errors above first.';
+        document.getElementById('downloadBtn').disabled = !ok;
+        document.getElementById('copyBtn').disabled = !ok;
+        var changed = PH.fingerprint(levels) !== shippedId;
+        bannerEl.className = 'banner' + (changed ? ' warn' : '');
+        if (!ok) {
+          statusEl.className = 'status';
+          statusEl.textContent = errs.length + ' problem' + (errs.length > 1 ? 's' : '') + ' to fix before shipping.';
+        } else if (changed) {
+          statusEl.className = 'status';
+          statusEl.textContent = 'Structure changed: shipping this resets saved games.';
+        } else {
+          statusEl.className = 'status ok';
+          statusEl.textContent = 'Only names or blurbs differ from the shipped file (or nothing does). Progress is kept.';
+        }
+      }
+
+      // ---- Cards ----
+      function renderField(level, field) {
+        var p = level.params;
+        var wrap = el('label', { class: 'field' });
+        wrap.appendChild(el('span', { text: field.label }));
+        var input;
+        if (field.kind === 'int') {
+          input = el('input', { type: 'number', min: field.min, max: field.max, step: 1, value: p[field.key] });
+          input.addEventListener('input', function () {
+            p[field.key] = input.value === '' ? NaN : Number(input.value);
+            onChange(false);
+          });
+          wrap.appendChild(input);
+        } else if (field.kind === 'choice') {
+          input = el('select');
+          field.options.forEach(function (o) {
+            var opt = el('option', { value: String(o[0]), text: o[1] });
+            if (o[0] === p[field.key]) opt.selected = true;
+            input.appendChild(opt);
+          });
+          input.addEventListener('change', function () {
+            var match = field.options.filter(function (o) { return String(o[0]) === input.value; })[0];
+            p[field.key] = match ? match[0] : field.options[0][0];
+            onChange(false);
+          });
+          wrap.appendChild(input);
+        } else if (field.kind === 'multi') {
+          var fs = el('fieldset', { class: 'multi' });
+          field.options.forEach(function (o) {
+            var cb = el('input', { type: 'checkbox' });
+            cb.checked = p[field.key].indexOf(o[0]) !== -1;
+            cb.addEventListener('change', function () {
+              var next = field.options.filter(function (opt) {
+                var box = fs.querySelector('input[data-v="' + String(opt[0]) + '"]');
+                return box && box.checked;
+              }).map(function (opt) { return opt[0]; });
+              p[field.key] = next;
+              onChange(false);
+            });
+            cb.setAttribute('data-v', String(o[0]));
+            fs.appendChild(el('label', {}, [cb, el('span', { text: o[1] })]));
+          });
+          wrap = el('div', { class: 'field' }, [el('span', { text: field.label, style: 'font-size:13px;color:#a0a0c0' }), fs]);
+        }
+        if (field.help) wrap.appendChild(el('span', { class: 'help', text: field.help }));
+        return wrap;
+      }
+
+      function renderSamples(level, container) {
+        container.innerHTML = '';
+        var errs = PH.validateParams(level.type, level.params);
+        if (errs.length) {
+          container.appendChild(el('span', { class: 'status', text: 'Fix the settings to preview.' }));
+          return;
+        }
+        var seen = {};
+        for (var i = 0; i < 4; i++) {
+          var prob = PH.generate(level.type, level.params);
+          if (!prob || seen[prob.text]) continue;
+          seen[prob.text] = true;
+          var s = el('div', { class: 'sample' });
+          if (prob.figure) s.appendChild(el('div', { html: prob.figure }));
+          s.appendChild(el('span', { text: prob.display + ' ' }));
+          s.appendChild(el('span', { class: 'ans', text: String(PH.formatNumber(prob.answer)) }));
+          container.appendChild(s);
+        }
+      }
+
+      function renderCard(level, index) {
+        var type = PH.types[level.type];
+        var card = el('div', { class: 'card' });
+        var errs = [];
+        if (!level.name.trim()) errs.push('Give this level a name.');
+        errs = errs.concat(PH.validateParams(level.type, level.params));
+        if (errs.length) card.className += ' invalid';
+
+        card.appendChild(el('div', { class: 'card-head' }, [
+          el('span', { class: 'num', text: String(index + 1) }),
+          el('span', { class: 'typelabel', text: type.label }),
+          el('span', { class: 'id', text: level.id }),
+          el('button', { class: 'btn', type: 'button', text: '▲', title: 'Move up', onclick: function () { move(index, -1); } }),
+          el('button', { class: 'btn', type: 'button', text: '▼', title: 'Move down', onclick: function () { move(index, 1); } }),
+          el('button', { class: 'btn', type: 'button', text: 'Duplicate', onclick: function () { duplicate(index); } }),
+          el('button', { class: 'btn danger', type: 'button', text: 'Delete', onclick: function () { remove(index); } })
+        ]));
+        if (index === 0) card.querySelector('[title="Move up"]').disabled = true;
+        if (index === levels.length - 1) card.querySelector('[title="Move down"]').disabled = true;
+
+        var nameInput = el('input', { type: 'text', value: level.name, maxlength: 24 });
+        nameInput.addEventListener('input', function () { level.name = nameInput.value; onChange(false); });
+        var blurbInput = el('input', { type: 'text', value: level.blurb, maxlength: 60 });
+        blurbInput.addEventListener('input', function () { level.blurb = blurbInput.value; onChange(false); });
+        var typeSelect = el('select');
+        PH.order.forEach(function (key) {
+          var o = el('option', { value: key, text: PH.types[key].label });
+          if (key === level.type) o.selected = true;
+          typeSelect.appendChild(o);
+        });
+        typeSelect.addEventListener('change', function () {
+          level.type = typeSelect.value;
+          level.params = PH.normalizeParams(level.type, null);
+          onChange(true);
+        });
+
+        card.appendChild(el('div', { class: 'grid' }, [
+          el('label', { class: 'field' }, [el('span', { text: 'Name (shown on the planet card)' }), nameInput]),
+          el('label', { class: 'field' }, [el('span', { text: 'Blurb (one line under the name)' }), blurbInput]),
+          el('label', { class: 'field' }, [el('span', { text: 'Problem type' }), typeSelect])
+        ]));
+
+        var paramsGrid = el('div', { class: 'grid', style: 'margin-top:10px' });
+        type.fields.forEach(function (f) { paramsGrid.appendChild(renderField(level, f)); });
+        card.appendChild(paramsGrid);
+
+        if (errs.length) {
+          card.appendChild(el('ul', { class: 'errors' }, errs.map(function (e) { return el('li', { text: e }); })));
+        }
+
+        var samples = el('div', { class: 'samples' });
+        var preview = el('div', { class: 'preview' }, [
+          el('div', { class: 'preview-head' }, [
+            el('h2', { text: 'Preview' }),
+            el('button', { class: 'btn', type: 'button', text: 'Reroll', onclick: function () { renderSamples(level, samples); } })
+          ]),
+          samples
+        ]);
+        card.appendChild(preview);
+        renderSamples(level, samples);
+        card._samples = samples;
+        card._level = level;
+        return card;
+      }
+
+      function render() {
+        levelsEl.innerHTML = '';
+        if (!levels.length) {
+          levelsEl.appendChild(el('div', { class: 'empty', text: 'No levels yet. Add one below.' }));
+        }
+        levels.forEach(function (l, i) { levelsEl.appendChild(renderCard(l, i)); });
+        refreshOutput();
+      }
+
+      // Param edits re-validate and re-preview the card in place so typing in
+      // a field does not rebuild (and blur) it; structural edits re-render.
+      function onChange(structural) {
+        if (structural) { render(); return; }
+        var cards = levelsEl.querySelectorAll('.card');
+        for (var i = 0; i < cards.length; i++) {
+          var card = cards[i];
+          if (!card._level) continue;
+          var errs = [];
+          if (!card._level.name.trim()) errs.push('Give this level a name.');
+          errs = errs.concat(PH.validateParams(card._level.type, card._level.params));
+          card.className = 'card' + (errs.length ? ' invalid' : '');
+          var old = card.querySelector('.errors');
+          if (old) old.remove();
+          if (errs.length) {
+            card.insertBefore(el('ul', { class: 'errors' }, errs.map(function (e) { return el('li', { text: e }); })), card.querySelector('.preview'));
+          }
+          renderSamples(card._level, card._samples);
+        }
+        refreshOutput();
+      }
+
+      function move(index, dir) {
+        var j = index + dir;
+        if (j < 0 || j >= levels.length) return;
+        var tmp = levels[index];
+        levels[index] = levels[j];
+        levels[j] = tmp;
+        render();
+      }
+
+      function duplicate(index) {
+        var copy = JSON.parse(JSON.stringify(levels[index]));
+        copy.id = uniqueId(copy.id);
+        levels.splice(index + 1, 0, copy);
+        render();
+      }
+
+      function remove(index) {
+        if (!confirm('Delete level ' + (index + 1) + ' (' + levels[index].name + ')?')) return;
+        levels.splice(index, 1);
+        render();
+      }
+
+      document.getElementById('addBtn').addEventListener('click', function () {
+        var type = PH.types[addTypeEl.value];
+        levels.push({
+          id: uniqueId(type.label),
+          name: type.label,
+          blurb: '',
+          type: type.key,
+          params: PH.normalizeParams(type.key, null)
+        });
+        render();
+        var cards = levelsEl.querySelectorAll('.card');
+        var last = cards[cards.length - 1];
+        if (last) {
+          last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          var name = last.querySelector('input[type=text]');
+          if (name) name.select();
+        }
+      });
+
+      document.getElementById('downloadBtn').addEventListener('click', function () {
+        var blob = new Blob([serialize()], { type: 'text/javascript' });
+        var url = URL.createObjectURL(blob);
+        var a = el('a', { href: url, download: 'levels.js' });
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      });
+
+      document.getElementById('copyBtn').addEventListener('click', function () {
+        var text = serialize();
+        function done() {
+          statusEl.className = 'status ok';
+          statusEl.textContent = 'Copied levels.js to the clipboard.';
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () {
+            outputEl.select();
+            document.execCommand('copy');
+            done();
+          });
+        } else {
+          outputEl.select();
+          document.execCommand('copy');
+          done();
+        }
+      });
+
+      document.getElementById('resetBtn').addEventListener('click', function () {
+        if (!confirm('Discard the edits here and reload the shipped levels.js?')) return;
+        location.reload();
+      });
+
+      window.addEventListener('beforeunload', function (e) {
+        if (PH.fingerprint(levels) === shippedId && serialize() === serializeShipped) return;
+        e.preventDefault();
+        e.returnValue = '';
+      });
+      var serializeShipped = (function () {
+        var keep = levels;
+        levels = shipped;
+        var s = serialize();
+        levels = keep;
+        return s;
+      })();
+
+      render();
+    })();
+  </script>
+</body>
+</html>

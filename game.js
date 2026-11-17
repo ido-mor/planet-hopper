@@ -15,6 +15,43 @@
 
   var GROUND_COLOR = '#4a5a3a'; // earth green for level 1
 
+  // ---- Curriculum ----
+  // levels.js supplies the play order; problem-types.js knows how to ask each
+  // kind. Both load before this file. normalizeLevels() fills gaps from the
+  // type defaults and drops entries it cannot run, so a hand-edited file
+  // degrades to a playable game and logs what it ignored.
+  var PH = window.PlanetHopperProblems;
+  var curriculum = PH.normalizeLevels(window.PLANET_HOPPER_LEVELS);
+  var LEVELS = curriculum.levels;
+  curriculum.warnings.forEach(function (w) {
+    try { console.warn('levels.js: ' + w); } catch (err) {}
+  });
+  // Structure-only hash: changes to the order, a type or its params invalidate
+  // saved progress (see loadProgress); renames do not.
+  var CURRICULUM_ID = PH.fingerprint(LEVELS);
+
+  // Past the last defined level the game revisits earlier levels in a random
+  // order. The pick is a pure function of the level number so a resumed game
+  // lands on the same level it saved from, and no two consecutive levels
+  // repeat (when there is more than one to choose from).
+  function levelIndexFor(levelNumber) {
+    var n = LEVELS.length;
+    if (levelNumber <= n) return levelNumber - 1;
+    if (n === 1) return 0;
+    var prev = levelIndexFor(levelNumber - 1);
+    // Multiplicative hash of the level number, salted by the curriculum so a
+    // reorder also reshuffles the tail.
+    var h = Math.imul(levelNumber, 2654435761) ^ (CURRICULUM_ID.length * 0x9e3779b9);
+    h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+    var idx = (h >>> 16) % (n - 1);
+    return idx >= prev ? idx + 1 : idx;
+  }
+
+  function levelEntryFor(levelNumber) {
+    return LEVELS[levelIndexFor(levelNumber)];
+  }
+
   // ---- Saved progress ----
   // localStorage only: no backend, no accounts, and nothing about a child
   // leaves the device. Every access is wrapped because Safari in private mode
@@ -26,7 +63,8 @@
   function saveProgress() {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: 1,
+        v: 2,
+        curriculum: CURRICULUM_ID,
         level: state.level,
         score: state.score,
         lives: state.lives,
@@ -35,14 +73,24 @@
     } catch (err) {}
   }
 
+  // Set when a save was found but belongs to a different curriculum: the
+  // first title card then explains why the game is back at planet 1.
+  var curriculumChanged = false;
+
   // Returns null for anything we cannot trust, so a corrupt, hand-edited or
   // future-version save degrades to a clean start instead of a broken board.
+  // A save from a different curriculum is also null: level 7 may now be a
+  // different concept, or not exist at all.
   function loadProgress() {
     try {
       var raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return null;
       var d = JSON.parse(raw);
-      if (!d || d.v !== 1) return null;
+      if (!d || d.v !== 2) return null;
+      if (d.curriculum !== CURRICULUM_ID) {
+        curriculumChanged = true;
+        return null;
+      }
       var level = Math.floor(d.level);
       var score = Math.floor(d.score);
       var lives = Math.floor(d.lives);
@@ -79,7 +127,16 @@
   var targetPlanet = document.getElementById('targetPlanet');
   var groundPlanet = document.getElementById('groundPlanet');
   var mathProblemEl = document.getElementById('mathProblem');
+  var mathProblemTextEl = document.getElementById('mathProblemText');
+  var problemFigureEl = document.getElementById('problemFigure');
   var answerInputDisplay = document.getElementById('answerInputDisplay');
+  var levelCompleteTextEl = document.getElementById('levelCompleteText');
+  var levelIntroOverlay = document.getElementById('levelIntroOverlay');
+  var levelIntroNotice = document.getElementById('levelIntroNotice');
+  var levelIntroPlanet = document.getElementById('levelIntroPlanet');
+  var levelIntroPlanetLabel = document.getElementById('levelIntroPlanetLabel');
+  var levelIntroName = document.getElementById('levelIntroName');
+  var levelIntroBlurb = document.getElementById('levelIntroBlurb');
   var keypadEl = document.getElementById('keypad');
   var feedbackOverlay = document.getElementById('feedbackOverlay');
   var feedbackCheck = document.getElementById('feedbackCheck');
@@ -362,170 +419,26 @@
     playSfx('click', keypadClickSound, 0.9);
   }
 
-  function problemStem(text) {
-    return text.replace(/\s*\?\s*$/, '').trim();
-  }
-
-  function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
   function formatNumber(n) {
     var s = n < 0 ? '-' + String(-n) : String(n);
     if (Math.abs(n) < 1000) return s;
     return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
-  // ---- Math problem by level ----
-  // Level 1: single & two-digit, addition and subtraction
-  // Level 2: add parentheticals, single & two-digit, answer max 99
-  // Level 3: three-digit numbers; parentheticals max 999
-  // Level 4: two-digit and four-digit add/subtract (comma in 4-digit)
-  // Level 5: estimation only — round whole numbers (up to 900,000) to random place value
-  // Level 6: single digit x two-digit
-  // Level 7+: incremental (two-digit x two-digit, etc.); no division
-  // Level 10+: division introduced
-  var ROUND_PLACES = [
-    { name: 'tens', divisor: 10 },
-    { name: 'hundreds', divisor: 100 },
-    { name: 'thousands', divisor: 1000 },
-    { name: 'ten thousands', divisor: 10000 },
-    { name: 'hundred thousands', divisor: 100000 }
-  ];
-
+  // ---- Math problem ----
+  // What gets asked is entirely the current level's entry in levels.js: one
+  // problem type plus its params. The generators live in problem-types.js.
   function generateProblem() {
-    var level = state.level;
-    var types = [];
-    if (level === 1) {
-      types = ['add', 'subtract'];
-    } else if (level === 2 || level === 3) {
-      types = ['paren_add_sub', 'paren_mixed'];
-    } else if (level === 4) {
-      types = ['add', 'subtract'];
-    } else if (level === 5) {
-      types = ['round'];
-    } else if (level === 6) {
-      types = ['multiply', 'multiply_two'];
-    } else if (level >= 7 && level <= 9) {
-      types = ['multiply_two_two'];
-    } else {
-      types = ['divide'];
+    var entry = levelEntryFor(state.level);
+    var problem = null;
+    for (var attempt = 0; attempt < 8 && !problem; attempt++) {
+      problem = PH.generate(entry.type, entry.params);
+      // Never the same question twice in a row.
+      if (problem && state.lastProblem && state.lastProblem.text === problem.text) {
+        problem = null;
+      }
     }
-
-    var type = types[randomInt(0, types.length - 1)];
-    var a, b, c, text, answer;
-    var fmt = formatNumber;
-
-    switch (type) {
-      case 'add':
-        if (level === 1) {
-          a = randomInt(1, 99);
-          b = randomInt(1, 99);
-        } else {
-          var useFour = Math.random() < 0.5;
-          a = useFour ? randomInt(1000, 9999) : randomInt(10, 99);
-          b = useFour ? randomInt(1000, 9999) : randomInt(10, 99);
-        }
-        answer = a + b;
-        text = fmt(a) + ' + ' + fmt(b) + ' = ?';
-        break;
-
-      case 'subtract':
-        if (level === 1) {
-          a = randomInt(2, 99);
-          b = randomInt(1, a - 1);
-        } else {
-          var useFourA = Math.random() < 0.5;
-          a = useFourA ? randomInt(1000, 9999) : randomInt(20, 99);
-          var maxB = useFourA ? Math.min(9999, a - 1) : Math.min(99, a - 1);
-          if (maxB < 10) return generateProblem();
-          b = randomInt(10, maxB);
-          if (a - b < 0) return generateProblem();
-        }
-        answer = a - b;
-        text = fmt(a) + ' - ' + fmt(b) + ' = ?';
-        break;
-
-      case 'paren_add_sub':
-        if (level === 2) {
-          a = randomInt(1, 50);
-          b = randomInt(1, 50);
-          c = randomInt(1, Math.min(a + b, 99));
-          answer = a + b - c;
-          if (answer < 0 || answer > 99) return generateProblem();
-          text = '(' + a + ' + ' + b + ') - ' + c + ' = ?';
-        } else {
-          a = randomInt(1, 400);
-          b = randomInt(1, 400);
-          c = randomInt(1, Math.min(a + b, 999));
-          answer = a + b - c;
-          if (answer < 0 || answer > 999) return generateProblem();
-          text = '(' + fmt(a) + ' + ' + fmt(b) + ') - ' + fmt(c) + ' = ?';
-        }
-        break;
-
-      case 'paren_mixed':
-        if (level === 2) {
-          a = randomInt(10, 80);
-          b = randomInt(1, Math.min(40, a - 1));
-          c = randomInt(1, 50);
-          answer = (a - b) + c;
-          if (answer > 99) return generateProblem();
-          text = '(' + a + ' - ' + b + ') + ' + c + ' = ?';
-        } else {
-          a = randomInt(50, 600);
-          b = randomInt(1, Math.min(200, a - 1));
-          c = randomInt(1, 400);
-          answer = (a - b) + c;
-          if (answer > 999) return generateProblem();
-          text = '(' + fmt(a) + ' - ' + fmt(b) + ') + ' + fmt(c) + ' = ?';
-        }
-        break;
-
-      case 'multiply':
-        a = randomInt(1, 9);
-        b = randomInt(1, 9);
-        answer = a * b;
-        text = a + ' x ' + b + ' = ?';
-        break;
-
-      case 'multiply_two':
-        a = randomInt(1, 9);
-        b = randomInt(10, 99);
-        answer = a * b;
-        text = a + ' x ' + b + ' = ?';
-        break;
-
-      case 'multiply_two_two':
-        a = randomInt(10, 99);
-        b = randomInt(2, 9);
-        answer = a * b;
-        text = a + ' x ' + b + ' = ?';
-        break;
-
-      case 'divide':
-        b = randomInt(2, level >= 11 ? 12 : 9);
-        answer = randomInt(2, level >= 11 ? 99 : 12);
-        a = answer * b;
-        text = a + ' \u00F7 ' + b + ' = ?';
-        break;
-
-      case 'round':
-        a = randomInt(1, 900000);
-        var place = ROUND_PLACES[randomInt(0, ROUND_PLACES.length - 1)];
-        answer = Math.round(a / place.divisor) * place.divisor;
-        text = 'Round ' + fmt(a) + ' to the nearest ' + place.name + '.';
-        break;
-
-      default:
-        return generateProblem();
-    }
-
-    answer = Math.floor(Number(answer));
-    if (isNaN(answer) || !isFinite(answer) || answer < 0) return generateProblem();
-
-    var problem = { text: text, answer: answer };
-    if (state.lastProblem && state.lastProblem.text === text) return generateProblem();
+    if (!problem) problem = PH.generate(entry.type, entry.params) || PH.generate('addsub', null);
     state.lastProblem = problem;
     return problem;
   }
@@ -585,9 +498,28 @@
     });
   }
 
+  // The figure (area problems draw their shape) is set here, once per problem,
+  // not in renderProblemText: that runs per keystroke.
+  function renderProblemFigure() {
+    if (!problemFigureEl) return;
+    var problem = state.currentProblem;
+    if (problem && problem.figure) {
+      problemFigureEl.innerHTML = problem.figure;
+      problemFigureEl.setAttribute('aria-label', problem.figureLabel || '');
+      problemFigureEl.classList.remove('hidden');
+      mathProblemEl.classList.add('has-figure');
+    } else {
+      problemFigureEl.innerHTML = '';
+      problemFigureEl.removeAttribute('aria-label');
+      problemFigureEl.classList.add('hidden');
+      mathProblemEl.classList.remove('has-figure');
+    }
+  }
+
   function renderProblemText() {
     if (state.currentProblem) {
-      mathProblemEl.textContent = problemStem(state.currentProblem.text);
+      var textTarget = mathProblemTextEl || mathProblemEl;
+      textTarget.textContent = state.currentProblem.display;
       if (answerInputDisplay) {
         answerInputDisplay.textContent = state.userInput;
         answerInputDisplay.classList.toggle('is-empty', !state.userInput);
@@ -617,64 +549,68 @@
     }
   }
 
-  function parseWholeNumber(str) {
-    if (typeof str !== 'string') return NaN;
-    var normalized = str.replace(/,/g, '').trim();
-    if (!/^\d+$/.test(normalized)) return NaN;
-    return Number(normalized);
-  }
-
-  function solveFromProblemText(text) {
-    if (typeof text !== 'string') return null;
-
-    var roundMatch = text.match(/^Round\s+([\d,]+)\s+to the nearest\s+(tens|hundreds|thousands|ten thousands|hundred thousands)\.$/);
-    if (roundMatch) {
-      var rawNum = parseWholeNumber(roundMatch[1]);
-      if (!isFinite(rawNum)) return null;
-      var placeMap = {
-        'tens': 10,
-        'hundreds': 100,
-        'thousands': 1000,
-        'ten thousands': 10000,
-        'hundred thousands': 100000
-      };
-      var divisor = placeMap[roundMatch[2]];
-      if (!divisor) return null;
-      return Math.round(rawNum / divisor) * divisor;
-    }
-
-    var parenMatch = text.match(/^\(([\d,]+)\s*([+\-])\s*([\d,]+)\)\s*([+\-])\s*([\d,]+)\s*=\s*\?$/);
-    if (parenMatch) {
-      var p1 = parseWholeNumber(parenMatch[1]);
-      var p2 = parseWholeNumber(parenMatch[3]);
-      var p3 = parseWholeNumber(parenMatch[5]);
-      if (!isFinite(p1) || !isFinite(p2) || !isFinite(p3)) return null;
-      var first = parenMatch[2] === '+' ? (p1 + p2) : (p1 - p2);
-      return parenMatch[4] === '+' ? (first + p3) : (first - p3);
-    }
-
-    var basicMatch = text.match(/^([\d,]+)\s*([+\-x÷])\s*([\d,]+)\s*=\s*\?$/);
-    if (basicMatch) {
-      var b1 = parseWholeNumber(basicMatch[1]);
-      var b2 = parseWholeNumber(basicMatch[3]);
-      if (!isFinite(b1) || !isFinite(b2)) return null;
-      switch (basicMatch[2]) {
-        case '+': return b1 + b2;
-        case '-': return b1 - b2;
-        case 'x': return b1 * b2;
-        case '÷': return b2 === 0 ? null : (b1 / b2);
-        default: return null;
-      }
-    }
-
-    return null;
-  }
-
   function showProblem() {
     state.currentProblem = generateProblem();
     state.userInput = '';
+    renderProblemFigure();
     renderProblemText();
     fitProblemText();
+  }
+
+  // ---- Level title card ----
+  // Every planet opens with its name and blurb (and on resume, so the child is
+  // re-oriented). Timed, with a tap to go sooner. Input stays blocked until
+  // it is gone: state.phase is 'levelIntro' for the duration.
+  var LEVEL_INTRO_MS = 2600;
+  var levelIntroToken = 0;
+  var levelIntroDone = null;
+
+  function showLevelIntro(done) {
+    var entry = levelEntryFor(state.level);
+    levelIntroToken += 1;
+    var gen = levelIntroToken;
+    levelIntroDone = done;
+    state.phase = 'levelIntro';
+    if (!levelIntroOverlay) {
+      dismissLevelIntro(gen);
+      return;
+    }
+    if (levelIntroNotice) {
+      levelIntroNotice.classList.toggle('hidden', !curriculumChanged);
+    }
+    if (levelIntroPlanet) {
+      levelIntroPlanet.style.background = PLANET_COLORS[(state.level - 1) % PLANET_COLORS.length];
+    }
+    if (levelIntroPlanetLabel) levelIntroPlanetLabel.textContent = 'Planet ' + state.level;
+    if (levelIntroName) levelIntroName.textContent = entry.name;
+    if (levelIntroBlurb) {
+      levelIntroBlurb.textContent = entry.blurb;
+      levelIntroBlurb.classList.toggle('hidden', !entry.blurb);
+    }
+    // The notice has done its job once it has been shown.
+    curriculumChanged = false;
+    levelIntroOverlay.classList.remove('hidden');
+    setTimeout(function () {
+      dismissLevelIntro(gen);
+    }, LEVEL_INTRO_MS);
+  }
+
+  function dismissLevelIntro(gen) {
+    if (gen !== undefined && gen !== levelIntroToken) return;
+    if (state.phase !== 'levelIntro') return;
+    levelIntroToken += 1;
+    if (levelIntroOverlay) levelIntroOverlay.classList.add('hidden');
+    var done = levelIntroDone;
+    levelIntroDone = null;
+    state.phase = 'playing';
+    if (done) done();
+  }
+
+  if (levelIntroOverlay) {
+    levelIntroOverlay.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      dismissLevelIntro();
+    });
   }
 
   function showFeedback(correct) {
@@ -700,6 +636,9 @@
 
       if (correct && state.currentStep >= 10) {
         state.phase = 'levelComplete';
+        if (levelCompleteTextEl) {
+          levelCompleteTextEl.textContent = 'Great job! Next: ' + levelEntryFor(state.level + 1).name;
+        }
         levelCompleteOverlay.classList.remove('hidden');
         updatePlanetColors();
         if (levelCompletePlanet) {
@@ -739,11 +678,13 @@
     if (btnSubmit && btnSubmit.disabled) return;
     var trimmed = String(state.userInput).trim();
     if (!trimmed) return;
-    var num = trimmed === '' ? NaN : parseWholeNumber(trimmed);
+    var num = trimmed === '' ? NaN : PH.parseWholeNumber(trimmed);
     var expected = Number(state.currentProblem.answer);
-    var solvedFromText = solveFromProblemText(state.currentProblem.text);
-    if (solvedFromText !== null && isFinite(solvedFromText)) {
-      expected = Number(solvedFromText);
+    // Second, independent path to the answer (re-solved from the operands or
+    // parsed back out of the problem text) wins over the stored number.
+    var resolved = PH.solve(state.currentProblem);
+    if (resolved !== null && isFinite(resolved)) {
+      expected = Number(resolved);
     }
     var correct = trimmed !== '' && !isNaN(num) && num === expected && isFinite(expected);
 
@@ -1079,7 +1020,7 @@
     winOverlay.classList.add('hidden');
     levelCompleteOverlay.classList.add('hidden');
     gameOverText.classList.remove('flash');
-    showProblem();
+    showLevelIntro(showProblem);
   }
 
   function continueToNextLevel() {
@@ -1093,8 +1034,7 @@
     scheduleShipPosition();
     updateLives();
     updateLevelDisplay();
-    state.phase = 'playing';
-    showProblem();
+    showLevelIntro(showProblem);
   }
 
   function playAgain() {

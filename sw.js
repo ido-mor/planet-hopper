@@ -1,10 +1,13 @@
-const CACHE_NAME = 'planet-hopper-v21';
+const CACHE_NAME = 'planet-hopper-v22';
 
-// Keep required offline files small and reliable.
+// Keep required offline files small and reliable. editor.html is deliberately
+// absent: it is a laptop authoring tool, not part of the game.
 const REQUIRED_ASSETS = [
   './',
   './index.html',
   './styles.css',
+  './problem-types.js',
+  './levels.js',
   './game.js',
   './manifest.webmanifest',
   './fonts/Pixeboy-z8XGD.ttf',
